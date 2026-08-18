@@ -1,0 +1,1165 @@
+/* ============================================================================
+   ASTROMAP — Main Stylesheet
+   
+   Readability-first CSS for a map-based stargazing planner.
+   This file contains:
+   - Layout and structure
+   - Component styling (header, map, panels, etc.)
+   - Loading and error states
+   - Mobile-first responsive design
+   
+   Theme colors and variables are in themes.css and are toggled via
+   CSS custom properties (--color-bg, --color-text, etc.)
+   ============================================================================ */
+
+/* Reset and baseline */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+html, body {
+    width: 100%;
+    height: 100%;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    font-size: 16px;
+    line-height: 1.5;
+    color: var(--color-text);
+    background-color: var(--color-bg);
+    transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+/* ============================================================================
+   HEADER
+   Minimal floating bar at top. Contains title and theme toggle.
+   ============================================================================ */
+
+.header {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 60px;
+    background-color: var(--color-header-bg);
+    border-bottom: 1px solid var(--color-border);
+    z-index: 100;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    display: flex;
+    align-items: center;
+}
+
+.header-content {
+    width: 100%;
+    padding: 0 1rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.header-title {
+    font-size: 1.25rem;
+    font-weight: 600;
+    letter-spacing: -0.5px;
+}
+
+.header-controls {
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
+}
+
+/* ============================================================================
+   THEME SELECTOR
+   Button group to switch between themes, showing which is active.
+   ============================================================================ */
+
+.theme-selector {
+    display: flex;
+    gap: 0.25rem;
+    background-color: var(--color-button-bg);
+    border: 1px solid var(--color-border);
+    border-radius: 4px;
+    padding: 0.25rem;
+    transition: all 0.3s ease;
+}
+
+.theme-btn {
+    background-color: transparent;
+    border: none;
+    color: var(--color-text);
+    padding: 0.5rem 0.75rem;
+    cursor: pointer;
+    font-size: 0.9rem;
+    font-weight: 500;
+    transition: all 0.2s ease;
+    border-radius: 3px;
+    white-space: nowrap;
+}
+
+/* A translucent white wash here meant Astronomer mode lit up grey on hover.
+   The themed button colour does the same job without any white. */
+.theme-btn:hover {
+    background-color: var(--color-button-hover-bg);
+}
+
+.theme-btn.active {
+    background-color: var(--color-accent);
+    color: var(--color-bg);
+    font-weight: 600;
+    box-shadow: 0 0 6px rgba(0, 0, 0, 0.2);
+}
+
+.theme-btn:active {
+    transform: scale(0.95);
+}
+
+/* ============================================================================
+   MAP CONTAINER
+   Full-screen map with space for header.
+   ============================================================================ */
+
+#map {
+    position: fixed;
+    top: 60px;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    width: 100%;
+    height: calc(100vh - 60px);
+}
+
+/* Customize MapLibre GL controls */
+.maplibregl-ctrl-attrib {
+    background-color: var(--color-bg);
+    color: var(--color-text);
+    font-size: 0.75rem;
+}
+
+.maplibregl-ctrl-attrib a {
+    color: var(--color-link);
+    text-decoration: none;
+}
+
+.maplibregl-ctrl-attrib a:hover {
+    text-decoration: underline;
+}
+
+/* ----------------------------------------------------------------------------
+   MapLibre's own buttons (zoom, compass, locate)
+
+   The button backgrounds follow our theme variables, but the +/-/compass
+   glyphs do NOT: MapLibre draws them as SVG background-images with a dark grey
+   baked into the file, so there is no colour property to override. On a dark
+   button that is dark-on-dark and effectively invisible, which is exactly what
+   was happening in Dark mode.
+
+   The fix is to invert the icon image itself. invert(1) turns the dark glyph
+   white, and in Astronomer mode a sepia/hue-rotate pass on top turns that
+   white into red, since no white is allowed anywhere in that theme.
+   -------------------------------------------------------------------------- */
+
+.maplibregl-ctrl-group {
+    background-color: var(--color-button-bg);
+    border: 1px solid var(--color-border);
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
+}
+
+.maplibregl-ctrl-group button {
+    background-color: var(--color-button-bg);
+    color: var(--color-text);
+    border-color: var(--color-border);
+}
+
+.maplibregl-ctrl-group button:hover {
+    background-color: var(--color-button-hover-bg);
+}
+
+.maplibregl-ctrl-group button + button {
+    border-top-color: var(--color-border);
+}
+
+.maplibregl-ctrl-group button:disabled {
+    opacity: 0.4;
+}
+
+/* Dark theme: flip the dark glyphs to light so they read on a dark button. */
+html[data-theme="dark"] .maplibregl-ctrl-group button .maplibregl-ctrl-icon {
+    filter: invert(1);
+}
+
+/* Astronomer theme: flip them, then tint the result red. */
+html[data-theme="astronomer"] .maplibregl-ctrl-group button .maplibregl-ctrl-icon {
+    filter: invert(1) sepia(1) hue-rotate(-30deg) saturate(6) brightness(0.75);
+}
+
+/* ----------------------------------------------------------------------------
+   ASTRONOMER THEME: the map itself
+
+   The brief is strict — no white, blue or green pixels anywhere in this mode,
+   because they wreck dark adaptation. Our own UI honours that through theme
+   variables, but the map is a photograph-like raster: MapLibre's paint
+   properties can desaturate it (map.js does) yet desaturating leaves greys and
+   whites, which are the worst offenders.
+
+   So the whole map canvas gets a CSS filter that forces it to monochrome red:
+
+     grayscale(1)       drop every existing hue, leaving lightness only
+     brightness(0.4)    dim BEFORE tinting — this one matters. Tint first and
+                        the red channel clips at full white while green keeps
+                        climbing, so the brightest pixels come out amber
+                        instead of red. Dimming first keeps everything inside
+                        the range where the hue stays put.
+     sepia(1)           push that lightness into a single warm hue
+     hue-rotate(-40deg) swing that hue down to red
+     saturate(6)        deepen it so nothing reads as washed-out grey
+     brightness(0.9)    final level
+
+   Checked numerically across the full input range, including pure white and
+   the atlas's blue, green and yellow bands: everything lands at a hue of about
+   8° with green and blue never exceeding 27% of the red channel. No white,
+   blue or green pixel survives.
+
+   Applied only to .maplibregl-canvas, so markers and the control buttons —
+   which already follow the theme variables — are left alone.
+   -------------------------------------------------------------------------- */
+
+/* The header's telescope gets the same treatment. It is an emoji, which
+   browsers draw as a full-colour glyph regardless of what `color` says, so it
+   kept its blues and whites in Astronomer mode. That is why it is wrapped in
+   its own span rather than sitting loose in the heading — the filter has to
+   land on the glyph and not on the heading text, which is already themed. */
+.header-icon {
+    display: inline-block;
+}
+
+html[data-theme="astronomer"] .maplibregl-canvas,
+html[data-theme="astronomer"] .header-icon {
+    filter: grayscale(1) brightness(0.4) sepia(1) hue-rotate(-40deg) saturate(6) brightness(0.9);
+}
+
+/* ============================================================================
+   LOADER SPINNER
+   Shown while map and initial data are loading.
+   ============================================================================ */
+
+.loader {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    text-align: center;
+    z-index: 200;
+    background-color: var(--color-modal-bg);
+    padding: 2rem;
+    border-radius: 8px;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
+}
+
+.loader.hidden {
+    display: none;
+}
+
+.spinner {
+    width: 40px;
+    height: 40px;
+    margin: 0 auto 1rem;
+    border: 4px solid var(--color-border);
+    border-top-color: var(--color-accent);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+
+.loader p {
+    font-size: 0.9rem;
+    color: var(--color-text-secondary);
+}
+
+/* ============================================================================
+   ERROR BANNER
+   Shown at top if an API or initialization error occurs.
+   Dismissible with an × button.
+   ============================================================================ */
+
+.error-banner {
+    position: fixed;
+    top: 70px;
+    left: 0;
+    right: 0;
+    background-color: var(--color-error-bg);
+    color: var(--color-error-text);
+    padding: 1rem 1.5rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    z-index: 150;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+    animation: slideDown 0.3s ease-out;
+}
+
+.error-banner.hidden {
+    display: none;
+}
+
+@keyframes slideDown {
+    from {
+        transform: translateY(-100%);
+        opacity: 0;
+    }
+    to {
+        transform: translateY(0);
+        opacity: 1;
+    }
+}
+
+.error-close {
+    background: none;
+    border: none;
+    color: var(--color-error-text);
+    font-size: 1.5rem;
+    cursor: pointer;
+    padding: 0;
+    margin-left: 1rem;
+    opacity: 0.7;
+    transition: opacity 0.2s ease;
+}
+
+.error-close:hover {
+    opacity: 1;
+}
+
+/* ============================================================================
+   RESPONSIVE DESIGN
+   Mobile-first: base styles above are for mobile.
+   Tablet and desktop enhancements below.
+   ============================================================================ */
+
+@media (min-width: 768px) {
+    .header {
+        height: 70px;
+    }
+
+    #map {
+        top: 70px;
+        height: calc(100vh - 70px);
+    }
+
+    .header-title {
+        font-size: 1.5rem;
+    }
+
+    .error-banner {
+        top: 80px;
+    }
+
+    .control-panel {
+        top: 90px;
+        max-width: 300px;
+    }
+
+    /* The inspect panel is deliberately NOT repositioned per breakpoint.
+       It has one position rule further down this file that measures its way
+       around the controls panel instead. Overriding it here used to fight
+       with that rule: both selectors have the same specificity, so whichever
+       appeared later in the file won, regardless of the media query. */
+}
+
+/* ============================================================================
+   THEME-SPECIFIC STYLING
+   ============================================================================ */
+
+/* A --maplibre-bg variable used to be declared here for all three themes. It
+   was never referenced by a single rule, and theme variables belong in
+   themes.css anyway. Removed rather than left to rot. */
+
+/* Nothing theme-specific is needed here.
+
+   There used to be a block of rules like
+
+       html[data-theme="light"]  .inspect-header h2 { color: #1a1a1a; }
+       html[data-theme="dark"]   .inspect-header h2 { color: #f1f5f9; }
+
+   repeating, as literal hex values, colours that themes.css already defines as
+   --color-text. That defeats the point of custom properties: every new theme
+   would need another copy, and any element styled with a variable (the section
+   headings, for instance) would be silently overridden back to a fixed colour.
+
+   Elements inherit --color-text from body, or name a variable themselves.
+   To restyle something per theme, change the variable in themes.css. */
+
+@media (min-width: 1024px) {
+    .header-content {
+        padding: 0 2rem;
+    }
+
+    .loader {
+        padding: 3rem;
+    }
+}
+
+/* ============================================================================
+   ACCESSIBILITY
+   Focus states for keyboard navigation.
+   ============================================================================ */
+
+button:focus-visible {
+    outline: 2px solid var(--color-accent);
+    outline-offset: 2px;
+}
+
+/* ============================================================================
+   CONTROL PANELS
+   Floating panels for overlay controls (light pollution, etc.)
+   Positioned absolutely on the map, typically top-left or top-right.
+   ============================================================================ */
+
+.control-panel {
+    position: fixed;
+    top: 80px;
+    left: 1rem;
+    background-color: var(--color-panel-bg);
+    border: 1px solid var(--color-panel-border);
+    border-radius: 6px;
+    padding: 0;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+    max-width: 320px;
+    z-index: 50;
+    font-size: 0.9rem;
+}
+
+.panel-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.75rem 1rem;
+    border-bottom: 1px solid var(--color-panel-border);
+}
+
+.panel-header h3 {
+    font-size: 0.95rem;
+    font-weight: 600;
+    margin: 0;
+}
+
+.toggle-btn {
+    background: none;
+    border: none;
+    color: var(--color-text);
+    font-size: 1rem;
+    cursor: pointer;
+    padding: 0.25rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: opacity 0.2s ease;
+}
+
+.toggle-btn:hover {
+    opacity: 0.7;
+}
+
+/* The eye icons. Both are in the HTML; only the one matching the button's
+   aria-pressed state is shown, so the single source of truth for "is the
+   overlay on?" is the same attribute screen readers use. */
+.toggle-btn .icon {
+    width: 18px;
+    height: 18px;
+    display: block;
+}
+
+.toggle-btn[aria-pressed="true"] .icon-eye-closed,
+.toggle-btn[aria-pressed="false"] .icon-eye-open {
+    display: none;
+}
+
+.panel-content {
+    padding: 0.75rem 1rem;
+}
+
+/* Small print under a control panel: where the data came from. */
+.panel-note {
+    margin: 0.75rem 0 0;
+    padding-top: 0.75rem;
+    border-top: 1px solid var(--color-border);
+    font-size: 0.75rem;
+    line-height: 1.4;
+    color: var(--color-text-secondary);
+}
+
+.panel-note a {
+    color: var(--color-link);
+    text-decoration: none;
+}
+
+.panel-note a:hover {
+    text-decoration: underline;
+}
+
+/* One row: label, slider, value. A stacked column looked fine on its own but
+   cost about 40px of height, and every pixel here is a pixel the inspect
+   panel below cannot use. */
+.opacity-control {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 0.6rem;
+}
+
+.opacity-control .opacity-slider {
+    flex: 1;
+    min-width: 90px;
+}
+
+#opacity-value {
+    /* Fixed width so the slider does not jump as the number changes. */
+    min-width: 3.2ch;
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+}
+
+.opacity-control label {
+    font-size: 0.85rem;
+    font-weight: 500;
+    color: var(--color-text);
+}
+
+.opacity-slider {
+    width: 100%;
+    height: 6px;
+    border-radius: 3px;
+    background: var(--color-border);
+    outline: none;
+    -webkit-appearance: none;
+    appearance: none;
+    cursor: pointer;
+}
+
+/* Slider thumb styling for Webkit browsers (Chrome, Safari, Edge) */
+.opacity-slider::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background: var(--color-accent);
+    cursor: pointer;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
+    transition: all 0.2s ease;
+}
+
+.opacity-slider::-webkit-slider-thumb:hover {
+    transform: scale(1.15);
+}
+
+/* Slider thumb styling for Firefox */
+.opacity-slider::-moz-range-thumb {
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background: var(--color-accent);
+    cursor: pointer;
+    border: none;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
+    transition: all 0.2s ease;
+}
+
+.opacity-slider::-moz-range-thumb:hover {
+    transform: scale(1.15);
+}
+
+/* Track styling for Firefox */
+.opacity-slider::-moz-range-track {
+    background: transparent;
+    border: none;
+}
+
+/* Display current opacity value */
+#opacity-value {
+    font-size: 0.8rem;
+    color: var(--color-text-secondary);
+    text-align: right;
+}
+
+/* ============================================================================
+   INSPECT MARKER
+   Visual indicator showing where the user clicked on the map.
+   ============================================================================ */
+
+.inspect-marker {
+    width: 24px;
+    height: 24px;
+    background-color: var(--color-accent);
+    /* Themed rather than hard-coded white: the Astronomer theme must not put
+       a single white pixel on the screen. */
+    border: 3px solid var(--color-text);
+    border-radius: 50%;
+    cursor: pointer;
+    box-shadow: 0 0 0 2px var(--color-accent),
+                0 2px 8px rgba(0, 0, 0, 0.4);
+    animation: pulse 2s ease-in-out infinite;
+    z-index: 10;
+}
+
+@keyframes pulse {
+    0% {
+        box-shadow: 0 0 0 2px var(--color-accent),
+                    0 2px 8px rgba(0, 0, 0, 0.4);
+    }
+    50% {
+        box-shadow: 0 0 0 8px rgba(var(--color-accent-rgb), 0.2),
+                    0 2px 8px rgba(0, 0, 0, 0.4);
+    }
+    100% {
+        box-shadow: 0 0 0 2px var(--color-accent),
+                    0 2px 8px rgba(0, 0, 0, 0.4);
+    }
+}
+
+/* Adjust marker for different themes */
+html[data-theme="light"] .inspect-marker {
+    border-color: #f0f0f0;
+}
+
+html[data-theme="astronomer"] .inspect-marker {
+    background-color: #cc3333;
+    border-color: #000000;
+    box-shadow: 0 0 0 2px #cc3333,
+                0 2px 8px rgba(0, 0, 0, 0.8);
+}
+
+html[data-theme="astronomer"] .inspect-marker {
+    animation: pulse-red 2s ease-in-out infinite;
+}
+
+@keyframes pulse-red {
+    0% {
+        box-shadow: 0 0 0 2px #cc3333,
+                    0 2px 8px rgba(0, 0, 0, 0.8);
+    }
+    50% {
+        box-shadow: 0 0 0 8px rgba(204, 51, 51, 0.2),
+                    0 2px 8px rgba(0, 0, 0, 0.8);
+    }
+    100% {
+        box-shadow: 0 0 0 2px #cc3333,
+                    0 2px 8px rgba(0, 0, 0, 0.8);
+    }
+}
+
+/* ============================================================================
+   THE INSPECT PANEL
+
+   One layout at every screen size: a card in the left-hand column, directly
+   under the light pollution controls.
+
+   Its top edge is not a fixed number. js/inspect.js measures where the
+   controls panel actually ends and writes that into --inspect-panel-top, so
+   the two panels can never overlap even if the controls panel changes height.
+   The fallback in the var() is only used in the instant before that runs.
+
+   Height is capped by max-height rather than pinned, so a short panel stays
+   short. With five sections in the panel the cap is now reached on shorter
+   screens, so the content area scrolls — see .inspect-content below.
+   ============================================================================ */
+
+.inspect-panel {
+    position: fixed;
+    top: var(--inspect-panel-top, 260px);
+    left: 1rem;
+
+    /* Full width minus the margins on a phone, a fixed column on anything
+       wider. min() picks whichever is smaller, so there is no breakpoint. */
+    width: min(380px, calc(100vw - 2rem));
+
+    max-height: calc(100vh - var(--inspect-panel-top, 260px) - 1rem);
+
+    background-color: var(--color-panel-bg);
+    border: 1px solid var(--color-panel-border);
+    border-radius: 8px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.35);
+    z-index: 60;
+
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+
+    animation: slideUp 0.28s ease-out;
+    transition: max-height 0.25s ease, top 0.25s ease;
+}
+
+.inspect-panel.hidden {
+    display: none;
+}
+
+@keyframes slideUp {
+    from {
+        transform: translateY(16px);
+        opacity: 0;
+    }
+    to {
+        transform: translateY(0);
+        opacity: 1;
+    }
+}
+
+/* ----------------------------------------------------------------------------
+   Header: place name, coordinates underneath, close button
+   -------------------------------------------------------------------------- */
+
+.inspect-header {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.5rem;
+    padding: 0.75rem 0.9rem;
+    border-bottom: 1px solid var(--color-panel-border);
+    flex-shrink: 0;
+}
+
+.inspect-heading {
+    flex: 1;
+    min-width: 0;
+}
+
+.inspect-header h2 {
+    font-size: 1rem;
+    font-weight: 600;
+    margin: 0;
+    line-height: 1.25;
+}
+
+.inspect-subtitle {
+    margin: 0.15rem 0 0;
+    font-size: 0.75rem;
+    color: var(--color-text-secondary);
+    font-variant-numeric: tabular-nums;
+}
+
+.panel-close {
+    background: none;
+    border: none;
+    font-size: 1.4rem;
+    line-height: 1;
+    color: var(--color-text);
+    cursor: pointer;
+    padding: 0 0.15rem;
+    opacity: 0.6;
+    transition: opacity 0.2s ease;
+}
+
+.panel-close:hover {
+    opacity: 1;
+}
+
+/* ----------------------------------------------------------------------------
+   Body
+
+   overflow-y: auto does real work now. The panel carries five sections, and on
+   a phone or a short window they will not all fit at once, so this area
+   scrolls while the header and the place name stay put.
+   -------------------------------------------------------------------------- */
+
+.inspect-content {
+    overflow-y: auto;
+    flex: 1;
+    padding: 0.8rem 0.9rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.7rem;
+}
+
+/* A slim, unobtrusive scrollbar for when it does appear. */
+.inspect-content {
+    scrollbar-width: thin;
+    scrollbar-color: var(--color-border) transparent;
+}
+
+.inspect-content::-webkit-scrollbar {
+    width: 6px;
+}
+
+.inspect-content::-webkit-scrollbar-thumb {
+    background-color: var(--color-border);
+    border-radius: 3px;
+}
+
+/* ----------------------------------------------------------------------------
+   Stat tiles
+
+   Used by both "Weather now" and "Tonight". A grid of small tiles packs the
+   same numbers into roughly a third of the height that full-width rows took.
+   -------------------------------------------------------------------------- */
+
+.stat-grid {
+    display: grid;
+    gap: 0.4rem;
+}
+
+/* As many tiles per row as will fit at a readable size. Five sit on one row in
+   the normal 380px panel and fall to two rows on a very narrow phone, without
+   needing a breakpoint. */
+.stat-grid-auto {
+    grid-template-columns: repeat(auto-fit, minmax(58px, 1fr));
+}
+
+.stat-grid-4 {
+    grid-template-columns: repeat(4, 1fr);
+}
+
+.stat {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.1rem;
+    padding: 0.4rem 0.2rem;
+    background-color: var(--color-bg);
+    border: 1px solid var(--color-border);
+    border-radius: 5px;
+    min-width: 0;
+}
+
+.stat-name {
+    font-size: 0.65rem;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--color-text-secondary);
+}
+
+.stat-value {
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: var(--color-accent);
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+}
+
+/* Small explanatory line under a section. */
+.inspect-note {
+    margin: 0;
+    font-size: 0.7rem;
+    line-height: 1.35;
+    color: var(--color-text-secondary);
+}
+
+.inspect-note a {
+    color: var(--color-link);
+}
+
+/* ----------------------------------------------------------------------------
+   Sections inside the inspect panel
+   -------------------------------------------------------------------------- */
+
+.inspect-section {
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+}
+
+.inspect-section h3 {
+    font-size: 0.72rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    margin: 0;
+    color: var(--color-text-secondary);
+}
+
+/* ----------------------------------------------------------------------------
+   Sky quality bar
+
+   Width is the darkness score: a full bar means a pristine sky. The bar is a
+   single accent colour rather than a red-to-green ramp, because the Astronomer
+   theme is not allowed any green.
+   -------------------------------------------------------------------------- */
+
+.darkness-bar {
+    height: 8px;
+    background-color: var(--color-border);
+    border-radius: 4px;
+    overflow: hidden;
+}
+
+.darkness-fill {
+    height: 100%;
+    background-color: var(--color-accent);
+    transition: width 0.3s ease;
+}
+
+/* The headline reading, e.g. "Excellent dark sky" */
+.darkness-label {
+    margin: 0;
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: var(--color-accent);
+}
+
+/* The numbers underneath: LP zone, mag/arcsec2, brightness ratio */
+#darkness-detail {
+    margin: 0;
+    font-size: 0.78rem;
+    line-height: 1.35;
+}
+
+/* ----------------------------------------------------------------------------
+   3-night outlook cards
+   -------------------------------------------------------------------------- */
+
+.forecast-nights {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 0.4rem;
+}
+
+.forecast-night {
+    padding: 0.45rem 0.3rem;
+    background-color: var(--color-bg);
+    border: 1px solid var(--color-border);
+    border-radius: 5px;
+    text-align: center;
+    min-width: 0;
+}
+
+.forecast-date {
+    font-weight: 600;
+    color: var(--color-text);
+    font-size: 0.7rem;
+}
+
+.forecast-cloud {
+    color: var(--color-accent);
+    font-weight: 600;
+    font-size: 0.95rem;
+    font-variant-numeric: tabular-nums;
+}
+
+/* The bar shows how CLEAR the night is, so longer is always better. */
+.forecast-bar {
+    height: 4px;
+    margin: 0.3rem 0.15rem 0.25rem;
+    background-color: var(--color-border);
+    border-radius: 2px;
+    overflow: hidden;
+}
+
+.forecast-bar-fill {
+    height: 100%;
+    background-color: var(--color-accent);
+    transition: width 0.3s ease;
+}
+
+.forecast-caption {
+    font-size: 0.65rem;
+    color: var(--color-text-secondary);
+}
+
+/* ----------------------------------------------------------------------------
+   TONIGHT'S SKY
+
+   Three blocks stacked in one section: the moon, a Milky Way estimate, and a
+   list of planets. Everything is coloured from theme variables rather than
+   fixed hex values, which is what keeps the Astronomer theme entirely red
+   without a single extra rule down here.
+   -------------------------------------------------------------------------- */
+
+.moon-row {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+}
+
+.moon-glyph {
+    width: 32px;
+    height: 32px;
+    flex-shrink: 0;
+    /* currentColor comes from the panel text, so the moon is drawn in the
+       theme's colour — deep red in Astronomer mode, never a white circle. */
+    color: var(--color-text);
+}
+
+/* The unlit part: just an outline, so a new moon is still visible as a disc. */
+.moon-disc {
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 1;
+    opacity: 0.35;
+}
+
+/* The lit part. js/tonightsky.js rewrites this path for each phase. */
+.moon-lit {
+    fill: currentColor;
+}
+
+.moon-text {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+}
+
+.moon-phase {
+    font-size: 0.85rem;
+    font-weight: 600;
+}
+
+/* ---- Milky Way estimate ---- */
+
+.milkyway {
+    display: flex;
+    flex-direction: column;
+    gap: 0.15rem;
+}
+
+.milkyway-top {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 0.5rem;
+}
+
+.milkyway-label {
+    font-size: 0.8rem;
+    color: var(--color-text-secondary);
+}
+
+/* A small badge making it obvious this figure is judged, not measured. */
+.estimate-tag {
+    font-size: 0.6rem;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    padding: 0.05rem 0.3rem;
+    border: 1px solid var(--color-panel-border);
+    border-radius: 3px;
+    color: var(--color-text-secondary);
+    vertical-align: 0.1em;
+}
+
+.milkyway-headline {
+    font-size: 0.9rem;
+    font-weight: 600;
+}
+
+/* The rating is written onto the element as data-rating by tonightsky.js.
+   Styling it here rather than in JavaScript means the colours stay with the
+   rest of the design, and every theme gets them right automatically. */
+.milkyway-headline[data-rating="3"] {
+    color: var(--color-accent);
+}
+
+.milkyway-headline[data-rating="2"] {
+    color: var(--color-text);
+}
+
+.milkyway-headline[data-rating="1"],
+.milkyway-headline[data-rating="0"] {
+    color: var(--color-text-secondary);
+}
+
+/* ---- Planets ---- */
+
+.planet-list {
+    /* This is a <ul>; drop the bullets and the browser's default indent. */
+    list-style: none;
+    margin: 0;
+    padding: 0;
+}
+
+.planet {
+    display: grid;
+    /* Name on the left, peak altitude on the right, details underneath. */
+    grid-template-columns: 1fr auto;
+    align-items: baseline;
+    gap: 0 0.5rem;
+    padding: 0.3rem 0;
+    border-top: 1px solid var(--color-panel-border);
+}
+
+.planet-name {
+    font-size: 0.85rem;
+    font-weight: 600;
+}
+
+.planet-peak {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--color-accent);
+    font-variant-numeric: tabular-nums;
+}
+
+.planet-detail {
+    /* Span both columns so the times sit on their own line under the name. */
+    grid-column: 1 / -1;
+    font-size: 0.72rem;
+    color: var(--color-text-secondary);
+    font-variant-numeric: tabular-nums;
+}
+
+.planet-empty {
+    padding: 0.3rem 0;
+}
+
+/* Action buttons */
+.action-button {
+    background-color: var(--color-accent);
+    /* Themed, not literal white — in Astronomer mode this is near-black, so the
+       button carries no white pixels. */
+    color: var(--color-accent-text);
+    border: none;
+    padding: 0.6rem 1rem;
+    border-radius: 6px;
+    font-size: 0.9rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    width: 100%;
+}
+
+.action-button:hover {
+    opacity: 0.9;
+    transform: scale(1.02);
+}
+
+.action-button:active {
+    transform: scale(0.98);
+}
+
+.action-button:focus-visible {
+    outline: 2px solid var(--color-accent);
+    outline-offset: 2px;
+}
+
+/* Footer attribution */
+.inspect-footer {
+    padding-top: 0.5rem;
+    border-top: 1px solid var(--color-panel-border);
+    font-size: 0.68rem;
+    text-align: center;
+    flex-shrink: 0;
+}
+
+.inspect-footer a {
+    color: var(--color-link);
+    text-decoration: none;
+}
+
+.inspect-footer a:hover {
+    text-decoration: underline;
+}
+
+/* ============================================================================
+   UTILITIES
+   Small, single-purpose classes used throughout.
+   ============================================================================ */
+
+.hidden {
+    display: none !important;
+}
+
+.text-secondary {
+    color: var(--color-text-secondary);
+}
+
+.text-small {
+    font-size: 0.875rem;
+}
