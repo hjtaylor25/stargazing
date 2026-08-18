@@ -129,11 +129,44 @@ html, body {
     height: calc(100vh - 60px);
 }
 
-/* Customize MapLibre GL controls */
-.maplibregl-ctrl-attrib {
-    background-color: var(--color-bg);
+/* ----------------------------------------------------------------------------
+   MapLibre's attribution (the circled-i in the bottom corner)
+
+   Note the doubled-up class names below. MapLibre styles this element with
+   two-class selectors of its own — `.maplibregl-ctrl.maplibregl-ctrl-attrib`
+   and `.maplibregl-ctrl-attrib.maplibregl-compact` — and a plain one-class rule
+   of ours loses to those on specificity no matter which stylesheet loads last.
+   That is why this used to stay white in every theme however we set it here.
+   Matching their two classes, and loading after them, puts us back in charge.
+
+   js/map.js is what stops it opening by default; this only sets the colours.
+   -------------------------------------------------------------------------- */
+
+.maplibregl-ctrl.maplibregl-ctrl-attrib,
+.maplibregl-ctrl-attrib.maplibregl-compact {
+    background-color: var(--color-panel-bg);
     color: var(--color-text);
     font-size: 0.75rem;
+}
+
+/* The circled-i itself is a dark SVG baked into a background-image, exactly
+   like the zoom buttons, so there is no colour property to change. Clearing the
+   button's own translucent-white background first means the invert below lands
+   on the icon alone and not on a backdrop. */
+.maplibregl-ctrl-attrib-button {
+    background-color: transparent;
+}
+
+/* Dark theme: flip the dark glyph so it reads on a dark panel. */
+html[data-theme="dark"] .maplibregl-ctrl-attrib-button,
+html[data-theme="dark"] .maplibregl-ctrl-attrib.maplibregl-compact::after {
+    filter: invert(1);
+}
+
+/* Astronomer theme: flip it, then tint it red like every other icon. */
+html[data-theme="astronomer"] .maplibregl-ctrl-attrib-button,
+html[data-theme="astronomer"] .maplibregl-ctrl-attrib.maplibregl-compact::after {
+    filter: invert(1) sepia(1) hue-rotate(-30deg) saturate(6) brightness(0.75);
 }
 
 .maplibregl-ctrl-attrib a {

@@ -78,8 +78,17 @@ function initializeMap() {
             pitch: 0,
             bearing: 0,
             
-            // Navigation controls
-            attributionControl: true
+            // Attribution, kept out of the way.
+            //
+            // `compact: true` asks for a small circled-i button rather than a
+            // bar of credits across the bottom of the map, which MapLibre would
+            // otherwise show on any window wider than 640 pixels.
+            //
+            // The attribution itself is not optional — OpenStreetMap and CARTO
+            // both require it — so the button stays visible at all times and one
+            // click opens the full credits. This is MapLibre's own supported
+            // way of presenting it.
+            attributionControl: { compact: true }
         });
 
         // Add basic UI controls
@@ -98,6 +107,7 @@ function initializeMap() {
         map.on('load', function() {
             console.log('✓ Map loaded successfully');
             hideLoader();
+            collapseAttribution();
         });
 
         // Catch and report errors gracefully.
@@ -124,6 +134,30 @@ function initializeMap() {
         hideLoader();
         showError('Failed to load the map. Please refresh the page.');
     }
+}
+
+/* ============================================================================
+   Collapsing the attribution
+
+   Asking for `compact: true` is not quite enough on its own. The first time
+   MapLibre lays the control out it adds BOTH `maplibregl-compact` and
+   `maplibregl-compact-show` and sets the `open` attribute, so the credits start
+   expanded and only tuck themselves away once you drag the map. Until then a
+   pale bar sits over the corner of the map, which is glaring in the dark themes
+   and covers part of the view.
+
+   Undoing those two things here collapses it immediately, leaving just the
+   circled-i button. MapLibre's own click handler puts them back when that
+   button is pressed, so opening the credits still works exactly as normal —
+   this only changes the state it starts in.
+   ============================================================================ */
+
+function collapseAttribution() {
+    const attribution = document.querySelector('.maplibregl-ctrl-attrib');
+    if (!attribution) return;
+
+    attribution.classList.remove('maplibregl-compact-show');
+    attribution.removeAttribute('open');
 }
 
 /* ============================================================================
