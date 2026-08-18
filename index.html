@@ -20,9 +20,26 @@
          library actually arrived before using it. -->
     <script defer src="https://cdn.jsdelivr.net/npm/astronomy-engine@2.1.19/astronomy.browser.min.js"></script>
 
+    <!-- ABOUT THE ?v=7 ON OUR OWN FILES BELOW
+         =======================================
+         Browsers cache CSS and JavaScript hard, and GitHub Pages tells them to
+         keep it for ten minutes. That means editing a file and reloading can
+         show you the OLD version, which is baffling: the code on disk is right,
+         the page is wrong, and nothing looks broken.
+
+         Adding ?v=7 makes the browser treat it as a different file, so a change
+         is picked up immediately.
+
+         >>> WHEN YOU EDIT ANY CSS OR JS FILE, BUMP THIS NUMBER EVERYWHERE IN
+         >>> THIS FILE — 7 becomes 8, and so on. It is the one manual step that
+         >>> comes with having no build tool.
+
+         (While developing you can also keep the browser's dev tools open with
+         "Disable cache" ticked, which does the same job automatically.) -->
+
     <!-- Our stylesheets. styles.css does layout; themes.css only sets colours. -->
-    <link rel="stylesheet" href="css/styles.css">
-    <link rel="stylesheet" href="css/themes.css">
+    <link rel="stylesheet" href="css/styles.css?v=7">
+    <link rel="stylesheet" href="css/themes.css?v=7">
 </head>
 <body>
     <!-- Minimal header so the map gets as much of the screen as possible -->
@@ -345,13 +362,13 @@
 
     <!-- Load order matters: map.js creates the map and the shared helpers that
          the other three scripts wait on. -->
-    <script src="js/map.js"></script>
-    <script src="js/lightpollution.js"></script>
-    <script src="js/skyquality.js"></script>
-    <script src="js/tonightsky.js"></script>
-    <script src="js/inspect.js"></script>
-    <script src="js/search.js"></script>
-    <script src="js/favourites.js"></script>
-    <script src="js/theme.js"></script>
+    <script src="js/map.js?v=7"></script>
+    <script src="js/lightpollution.js?v=7"></script>
+    <script src="js/skyquality.js?v=7"></script>
+    <script src="js/tonightsky.js?v=7"></script>
+    <script src="js/inspect.js?v=7"></script>
+    <script src="js/search.js?v=7"></script>
+    <script src="js/favourites.js?v=7"></script>
+    <script src="js/theme.js?v=7"></script>
 </body>
 </html>
