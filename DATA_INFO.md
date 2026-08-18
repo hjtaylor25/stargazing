@@ -10,7 +10,7 @@ GitHub Pages. No download, no self-hosting, no API key.
 
 ---
 
-## What we use, and where
+## What is used, and where
 
 The atlas is published in two forms, and AstroMap uses both.
 
