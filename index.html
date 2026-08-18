@@ -16,7 +16,20 @@
     <meta property="og:type" content="website">
     <meta property="og:title" content="Darkward — stargazing planner">
     <meta property="og:description" content="Find dark skies near you: light pollution, tonight's cloud forecast, the moon, planets and deep-sky objects for anywhere on the map.">
-    <meta name="twitter:card" content="summary">
+    <meta name="twitter:card" content="summary_large_image">
+
+    <!-- The preview picture, 1200x630 — the size every platform expects.
+
+         NOTE: this URL has to be ABSOLUTE. A crawler reading this page has no
+         idea where it came from, so a relative path gives it nothing to fetch.
+         That means the site's address is written out here, and if Darkward ever
+         moves to its own domain these two lines are what needs changing. -->
+    <meta property="og:url" content="https://hjtaylor25.github.io/stargazing/">
+    <meta property="og:image" content="https://hjtaylor25.github.io/stargazing/assets/og-image.png">
+    <meta property="og:image:width" content="1200">
+    <meta property="og:image:height" content="630">
+    <meta property="og:image:alt" content="Darkward — up above the world so high">
+    <meta name="twitter:image" content="https://hjtaylor25.github.io/stargazing/assets/og-image.png">
 
     <!-- Colours the browser chrome on a phone. js/theme.js keeps it in step
          with the chosen theme, so the bar above the page matches the app. -->
