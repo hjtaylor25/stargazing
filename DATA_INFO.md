@@ -1,7 +1,6 @@
 # Light Pollution Data
 
-**Status: the app now uses real data.** The placeholder overlay that shipped
-with Phase 2 has been removed.
+**Status: the app now uses real data.** The placeholder overlay has been removed.
 
 AstroMap reads David J. Lorenz's *World Atlas of Artificial Night Sky
 Brightness* (2025 edition) directly from the author's own public hosting on
@@ -66,7 +65,7 @@ D. J. Lorenz, World Atlas of Artificial Night Sky Brightness 2025
 https://djlorenz.github.io/astronomy/lp/
 ```
 
-He also makes one specific request, which AstroMap honours:
+He also makes one specific request:
 
 > "Most light pollution websites, including ones that have simply copied my
 > data, state that the maps depict the Bortle Scale. This is not the case. […]
