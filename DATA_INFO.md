@@ -2,7 +2,7 @@
 
 **Status: the app now uses real data.** The placeholder overlay has been removed.
 
-AstroMap reads David J. Lorenz's *World Atlas of Artificial Night Sky
+DarkWard reads David J. Lorenz's *World Atlas of Artificial Night Sky
 Brightness* (2025 edition) directly from the author's own public hosting on
 GitHub Pages. No download, no self-hosting, no API key.
 
@@ -12,7 +12,7 @@ GitHub Pages. No download, no self-hosting, no API key.
 
 ## What is used, and where
 
-The atlas is published in two forms, and AstroMap uses both.
+The atlas is published in two forms, and DarkWard uses both.
 
 ### 1. Coloured map tiles — the overlay you see
 
@@ -56,7 +56,7 @@ change if you move to a different edition (2016, 2020, 2022, 2023, 2024 and
 
 ## Attribution — required
 
-Lorenz hosts this for free. Credit him. AstroMap does so in three places: the
+Lorenz hosts this for free. Credit him. DarkWard does so in three places: the
 MapLibre attribution control, the light pollution panel, and the inspect panel
 footer.
 
