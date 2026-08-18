@@ -493,7 +493,7 @@ function zoomToPlace(properties, lat, lng) {
             map.fitBounds([[west, south], [east, north]], {
                 padding: 40,
                 maxZoom: SEARCH_MAX_ZOOM,
-                duration: 1500
+                duration: mapMoveDuration(1500)
             });
             return;
         }

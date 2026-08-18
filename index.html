@@ -8,6 +8,20 @@
          into DARK + WARD with two font weights, not with a capital letter. -->
     <title>Darkward — Stargazing Planner</title>
 
+    <!-- What search engines and chat apps show when someone shares a link.
+         The map position lives in the URL hash, so a shared link points at a
+         particular spot — worth having it described properly when it lands in
+         someone's messages. -->
+    <meta name="description" content="Darkward finds you dark skies. Light pollution, tonight's cloud, the moon, planets and deep-sky objects for anywhere you tap on the map.">
+    <meta property="og:type" content="website">
+    <meta property="og:title" content="Darkward — stargazing planner">
+    <meta property="og:description" content="Find dark skies near you: light pollution, tonight's cloud forecast, the moon, planets and deep-sky objects for anywhere on the map.">
+    <meta name="twitter:card" content="summary">
+
+    <!-- Colours the browser chrome on a phone. js/theme.js keeps it in step
+         with the chosen theme, so the bar above the page matches the app. -->
+    <meta name="theme-color" content="#0B1020">
+
     <!-- The small mark as the tab icon. It drops the fine detail that turns to
          haze at 16-32px; the full mark is inlined in the header below. -->
     <link rel="icon" type="image/svg+xml" href="assets/darkward-mark-small.svg">
@@ -35,26 +49,26 @@
          library actually arrived before using it. -->
     <script defer src="https://cdn.jsdelivr.net/npm/astronomy-engine@2.1.19/astronomy.browser.min.js"></script>
 
-    <!-- ABOUT THE ?v=11 ON OUR OWN FILES BELOW
+    <!-- ABOUT THE ?v=12 ON OUR OWN FILES BELOW
          =======================================
          Browsers cache CSS and JavaScript hard, and GitHub Pages tells them to
          keep it for ten minutes. That means editing a file and reloading can
          show you the OLD version, which is baffling: the code on disk is right,
          the page is wrong, and nothing looks broken.
 
-         Adding ?v=11 makes the browser treat it as a different file, so a change
+         Adding ?v=12 makes the browser treat it as a different file, so a change
          is picked up immediately.
 
          >>> WHEN YOU EDIT ANY CSS OR JS FILE, BUMP THIS NUMBER EVERYWHERE IN
-         >>> THIS FILE — 11 becomes 12, and so on. It is the one manual step that
+         >>> THIS FILE — 12 becomes 13, and so on. It is the one manual step that
          >>> comes with having no build tool.
 
          (While developing you can also keep the browser's dev tools open with
          "Disable cache" ticked, which does the same job automatically.) -->
 
     <!-- Our stylesheets. styles.css does layout; themes.css only sets colours. -->
-    <link rel="stylesheet" href="css/styles.css?v=11">
-    <link rel="stylesheet" href="css/themes.css?v=11">
+    <link rel="stylesheet" href="css/styles.css?v=12">
+    <link rel="stylesheet" href="css/themes.css?v=12">
 </head>
 <body>
     <!-- Minimal header so the map gets as much of the screen as possible -->
@@ -515,19 +529,19 @@
 
     <!-- Load order matters: map.js creates the map and the shared helpers that
          the other three scripts wait on. -->
-    <script src="js/map.js?v=11"></script>
-    <script src="js/lightpollution.js?v=11"></script>
-    <script src="js/skyquality.js?v=11"></script>
-    <script src="js/tonightsky.js?v=11"></script>
-    <script src="js/deepsky.js?v=11"></script>
-    <script src="js/events.js?v=11"></script>
-    <script src="js/inspect.js?v=11"></script>
-    <script src="js/search.js?v=11"></script>
-    <script src="js/favourites.js?v=11"></script>
+    <script src="js/map.js?v=12"></script>
+    <script src="js/lightpollution.js?v=12"></script>
+    <script src="js/skyquality.js?v=12"></script>
+    <script src="js/tonightsky.js?v=12"></script>
+    <script src="js/deepsky.js?v=12"></script>
+    <script src="js/events.js?v=12"></script>
+    <script src="js/inspect.js?v=12"></script>
+    <script src="js/search.js?v=12"></script>
+    <script src="js/favourites.js?v=12"></script>
     <!-- The curated list is plain data and must load before the engine uses it. -->
-    <script src="js/darkskyplaces.js?v=11"></script>
-    <script src="js/recommend.js?v=11"></script>
-    <script src="js/theme.js?v=11"></script>
+    <script src="js/darkskyplaces.js?v=12"></script>
+    <script src="js/recommend.js?v=12"></script>
+    <script src="js/theme.js?v=12"></script>
 
     <!-- Offline support. Registered last and wrapped in a check, because a
          service worker is an enhancement: if the browser has no support, or the

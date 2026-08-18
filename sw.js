@@ -49,27 +49,27 @@
    closed — without them, an update can appear not to have worked at all.
    ============================================================================ */
 
-const CACHE_VERSION = 'darkward-v11';
+const CACHE_VERSION = 'darkward-v12';
 
 /* The app shell: enough to open the page and draw the interface with no
    network at all. The ?v= numbers must match the ones in index.html. */
 const APP_SHELL = [
     './',
     './index.html',
-    './css/styles.css?v=11',
-    './css/themes.css?v=11',
-    './js/map.js?v=11',
-    './js/lightpollution.js?v=11',
-    './js/skyquality.js?v=11',
-    './js/tonightsky.js?v=11',
-    './js/deepsky.js?v=11',
-    './js/events.js?v=11',
-    './js/inspect.js?v=11',
-    './js/search.js?v=11',
-    './js/favourites.js?v=11',
-    './js/darkskyplaces.js?v=11',
-    './js/recommend.js?v=11',
-    './js/theme.js?v=11',
+    './css/styles.css?v=12',
+    './css/themes.css?v=12',
+    './js/map.js?v=12',
+    './js/lightpollution.js?v=12',
+    './js/skyquality.js?v=12',
+    './js/tonightsky.js?v=12',
+    './js/deepsky.js?v=12',
+    './js/events.js?v=12',
+    './js/inspect.js?v=12',
+    './js/search.js?v=12',
+    './js/favourites.js?v=12',
+    './js/darkskyplaces.js?v=12',
+    './js/recommend.js?v=12',
+    './js/theme.js?v=12',
     './assets/darkward-mark-small.svg'
 ];
 
@@ -136,6 +136,23 @@ self.addEventListener('fetch', function (event) {
     if (request.method !== 'GET') return;
 
     const url = new URL(request.url);
+
+    // A page load always tries the network first, and this is the safety valve
+    // for the whole design.
+    //
+    // If index.html were served cache-first like everything else, then getting
+    // the version numbers wrong would leave every visitor stuck on an old copy
+    // of the app — and the only cure would be clearing site data, which no
+    // ordinary person is ever going to do. Going to the network first means an
+    // online visitor always gets the current page, and therefore the current
+    // ?v= numbers, whatever mistakes were made. Someone genuinely offline still
+    // falls back to the last copy, which is the whole point of being here.
+    //
+    // The cost is one small request per visit. Worth it.
+    if (request.mode === 'navigate') {
+        event.respondWith(networkFirst(request));
+        return;
+    }
 
     if (LIVE_HOSTS.includes(url.hostname)) {
         event.respondWith(networkFirst(request));

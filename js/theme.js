@@ -68,11 +68,38 @@ function applyTheme(theme) {
     
     // Save to localStorage for next visit
     localStorage.setItem(STORAGE_KEY, theme);
+
+    // Keep the phone's browser chrome in step with the page. Without this the
+    // bar above the app stays the dark theme's navy even in Astronomer mode,
+    // which is a bright blue strip at the top of a screen whose whole purpose
+    // is to have no blue on it.
+    updateBrowserThemeColour(theme);
     
     // Nothing else to do. Every themed colour in this app — the panels, the
     // map canvas, even MapLibre's own buttons — is driven from CSS by that one
     // data-theme attribute. There is no second place to keep in sync.
     console.log(`✓ Theme switched to: ${theme}`);
+}
+
+/* ----------------------------------------------------------------------------
+   The browser's own chrome
+
+   <meta name="theme-color"> tells a mobile browser what colour to paint the
+   bar above the page. It cannot read our CSS variables, so the values are
+   repeated here — keep them matching --color-bg in css/themes.css.
+   -------------------------------------------------------------------------- */
+
+const THEME_COLOURS = {
+    light: '#F6F8FC',
+    dark: '#0B1020',
+    astronomer: '#000000'
+};
+
+function updateBrowserThemeColour(theme) {
+    const meta = document.querySelector('meta[name="theme-color"]');
+    if (meta && THEME_COLOURS[theme]) {
+        meta.setAttribute('content', THEME_COLOURS[theme]);
+    }
 }
 
 /* ============================================================================

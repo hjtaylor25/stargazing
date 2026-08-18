@@ -122,6 +122,18 @@ function initializeRecommend() {
         findButton.addEventListener('click', findBestSpots);
     }
 
+    // Escape clears the suggestions, matching the search box and the saved
+    // places list. This panel was the only one that did not, which is exactly
+    // the sort of inconsistency a keyboard user notices immediately.
+    const panel = document.querySelector('.recommend-panel');
+    if (panel) {
+        panel.addEventListener('keydown', function (event) {
+            if (event.key !== 'Escape') return;
+            clearRecommendations();
+            setRecommendStatus('');
+        });
+    }
+
     updateRadiusButtons();
 
     // The label follows the map whenever the map is what it is following.
@@ -774,7 +786,7 @@ function frameRecommendations(ranked) {
     map.fitBounds(
         [[Math.min.apply(null, lngs), Math.min.apply(null, lats)],
          [Math.max.apply(null, lngs), Math.max.apply(null, lats)]],
-        { padding: 60, maxZoom: 11, duration: 1500 }
+        { padding: 60, maxZoom: 11, duration: mapMoveDuration(1500) }
     );
 }
 

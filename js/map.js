@@ -272,15 +272,33 @@ function getMapCenter() {
 }
 
 /**
+ * How long map movements should take.
+ *
+ * The CSS honours prefers-reduced-motion for everything the stylesheet
+ * controls, but the map is moved by JavaScript and the stylesheet cannot reach
+ * it. Someone who has asked for less movement should not get a 1.5-second
+ * swoop across the world every time they pick a search result.
+ *
+ * Read fresh each time rather than cached, because the preference can be
+ * changed while the page is open.
+ */
+function mapMoveDuration(normalMs) {
+    const prefersLessMotion = window.matchMedia
+        && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+    return prefersLessMotion ? 0 : normalMs;
+}
+
+/**
  * Fly map to a specific location with animation
  */
 function flyToLocation(lat, lng, zoom = 12) {
     if (!map) return;
-    
+
     map.flyTo({
         center: [lng, lat],
         zoom: zoom,
-        duration: 1500, // milliseconds
+        duration: mapMoveDuration(1500),
         essential: false
     });
 }

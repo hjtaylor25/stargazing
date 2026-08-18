@@ -548,6 +548,24 @@ html[data-theme="astronomer"] .maplibregl-canvas {
    Focus states for keyboard navigation.
    ============================================================================ */
 
+/* Some people get motion sickness or migraines from movement on screen, and
+   set a system preference asking for less of it. Honouring that costs one
+   rule: animations and transitions still happen, so nothing gets stuck in a
+   half-finished state, but they finish instantly instead of sliding.
+
+   !important is warranted here — this has to beat every animation in the file,
+   and the user's stated preference outranks our design. */
+@media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+        scroll-behavior: auto !important;
+    }
+}
+
 button:focus-visible {
     outline: 2px solid var(--color-accent);
     outline-offset: 2px;
