@@ -1204,6 +1204,179 @@ html[data-theme="astronomer"] .inspect-marker {
 }
 
 /* ----------------------------------------------------------------------------
+   RECOMMENDATIONS — "where should I go tonight?"
+
+   One row of controls, with the ranked list dropping down over the map in the
+   same way the search results do. Keeping the results out of the flow is what
+   stops this panel pushing the inspect panel down the screen.
+   -------------------------------------------------------------------------- */
+
+.recommend-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+    padding: 0.45rem 0.55rem;
+}
+
+/* The 50 / 100 / 200 km choice, as one joined group of buttons. */
+.radius-choice {
+    display: flex;
+    align-items: center;
+    gap: 0.15rem;
+}
+
+.radius-btn {
+    background: none;
+    border: 1px solid var(--color-panel-border);
+    border-radius: 4px;
+    padding: 0.22rem 0.4rem;
+    color: var(--color-text-secondary);
+    font-family: inherit;
+    font-size: 0.75rem;
+    font-variant-numeric: tabular-nums;
+    cursor: pointer;
+    transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+.radius-btn:hover {
+    background-color: var(--color-button-hover-bg);
+}
+
+/* The chosen radius. aria-pressed carries the same state for screen readers —
+   js/recommend.js sets both together. */
+.radius-btn.is-selected {
+    background-color: var(--color-accent);
+    border-color: var(--color-accent);
+    color: var(--color-accent-text);
+    font-weight: 600;
+}
+
+.radius-unit {
+    font-size: 0.72rem;
+    color: var(--color-text-secondary);
+    margin-left: 0.1rem;
+}
+
+.recommend-go {
+    flex-shrink: 0;
+    background-color: var(--color-button-bg);
+    border: 1px solid var(--color-panel-border);
+    border-radius: 5px;
+    padding: 0.3rem 0.6rem;
+    color: var(--color-text);
+    font-family: inherit;
+    font-size: 0.78rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+}
+
+.recommend-go:hover {
+    background-color: var(--color-button-hover-bg);
+}
+
+.recommend-go:disabled {
+    opacity: 0.55;
+    cursor: default;
+}
+
+/* ---- One row per suggestion ---- */
+
+.recommend-result {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.55rem;
+    width: 100%;
+    text-align: left;
+    background: none;
+    border: none;
+    border-bottom: 1px solid var(--color-panel-border);
+    padding: 0.5rem 0.7rem;
+    color: var(--color-text);
+    font-family: inherit;
+    cursor: pointer;
+}
+
+.search-results li:last-child .recommend-result {
+    border-bottom: none;
+}
+
+.recommend-result:hover,
+.recommend-result:focus-visible {
+    background-color: var(--color-button-hover-bg);
+    outline: none;
+}
+
+/* The number here matches the numbered pin on the map. */
+.recommend-rank {
+    flex-shrink: 0;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    background-color: var(--color-accent);
+    color: var(--color-accent-text);
+    font-size: 0.72rem;
+    font-weight: 700;
+    line-height: 20px;
+    text-align: center;
+}
+
+.recommend-text {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+}
+
+.recommend-name {
+    font-size: 0.82rem;
+    font-weight: 600;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.recommend-reason {
+    margin-top: 0.1rem;
+    font-size: 0.72rem;
+    color: var(--color-text-secondary);
+}
+
+/* Marks a place from the curated dark-sky list rather than from OpenStreetMap. */
+.recommend-badge {
+    align-self: flex-start;
+    margin-top: 0.2rem;
+    padding: 0.05rem 0.3rem;
+    border-radius: 3px;
+    background-color: var(--color-badge-bg);
+    color: var(--color-badge-text);
+    font-size: 0.6rem;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+
+/* ---- Numbered pins on the map ----
+
+   These sit outside .maplibregl-canvas, so the Astronomer theme's red filter
+   does not touch them — they take their colour from the theme variables like
+   the rest of the interface. */
+.recommend-pin {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 26px;
+    height: 26px;
+    border-radius: 50%;
+    background-color: var(--color-accent);
+    color: var(--color-accent-text);
+    border: 2px solid var(--color-panel-bg);
+    box-shadow: 0 1px 6px rgba(0, 0, 0, 0.5);
+    font-size: 0.78rem;
+    font-weight: 700;
+    cursor: pointer;
+}
+
+/* ----------------------------------------------------------------------------
    SAVED PLACES (FAVOURITES)
 
    The list reuses .search-results for its dropdown, since it appears in the
