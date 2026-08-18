@@ -35,33 +35,41 @@
 
    UPDATING
    --------
+   Bump CACHE_VERSION whenever the app files change — AND the ?v= numbers in
+   index.html at the same time. The ?v= is the one that actually matters: a new
+   version is a different URL, so a cache-first worker fetches it fresh. Leave
+   it alone while changing a file and every visitor keeps the old copy, with no
+   error to explain why. (This has already happened once: the tabs and the
+   events list shipped under a version number that was never bumped, and were
+   invisible until it was.)
+
    Bump CACHE_VERSION whenever the app files change. The old cache is deleted
    on activate, so nothing is left behind. skipWaiting and clients.claim mean a
    new worker takes over straight away rather than waiting for every tab to be
    closed — without them, an update can appear not to have worked at all.
    ============================================================================ */
 
-const CACHE_VERSION = 'darkward-v10';
+const CACHE_VERSION = 'darkward-v11';
 
 /* The app shell: enough to open the page and draw the interface with no
    network at all. The ?v= numbers must match the ones in index.html. */
 const APP_SHELL = [
     './',
     './index.html',
-    './css/styles.css?v=10',
-    './css/themes.css?v=10',
-    './js/map.js?v=10',
-    './js/lightpollution.js?v=10',
-    './js/skyquality.js?v=10',
-    './js/tonightsky.js?v=10',
-    './js/deepsky.js?v=10',
-    './js/events.js?v=10',
-    './js/inspect.js?v=10',
-    './js/search.js?v=10',
-    './js/favourites.js?v=10',
-    './js/darkskyplaces.js?v=10',
-    './js/recommend.js?v=10',
-    './js/theme.js?v=10',
+    './css/styles.css?v=11',
+    './css/themes.css?v=11',
+    './js/map.js?v=11',
+    './js/lightpollution.js?v=11',
+    './js/skyquality.js?v=11',
+    './js/tonightsky.js?v=11',
+    './js/deepsky.js?v=11',
+    './js/events.js?v=11',
+    './js/inspect.js?v=11',
+    './js/search.js?v=11',
+    './js/favourites.js?v=11',
+    './js/darkskyplaces.js?v=11',
+    './js/recommend.js?v=11',
+    './js/theme.js?v=11',
     './assets/darkward-mark-small.svg'
 ];
 
