@@ -88,7 +88,14 @@ function initializeMap() {
             // both require it — so the button stays visible at all times and one
             // click opens the full credits. This is MapLibre's own supported
             // way of presenting it.
-            attributionControl: { compact: true }
+            attributionControl: { compact: true },
+
+            // Keeps the position in the address bar as #zoom/lat/lng, so a
+            // reload puts you back where you were and you can send someone a
+            // link to exactly the spot you are looking at. MapLibre reads it on
+            // startup and rewrites it as you pan, using replaceState so panning
+            // does not fill up the back button.
+            hash: true
         });
 
         // Add basic UI controls

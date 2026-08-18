@@ -310,134 +310,202 @@
             <button id="inspect-close" class="panel-close" title="Close" aria-label="Close panel">×</button>
         </div>
 
+        <!-- Three tabs rather than one long scroll.
+
+             Everything a stargazer needs is still here; you just choose which
+             third of it to look at. That keeps the panel a fixed, readable
+             height however much goes into it, which is what makes room for the
+             deep-sky list and the events calendar without the whole thing
+             turning into a scrolling wall.
+
+             role="tablist" / role="tab" / role="tabpanel" and aria-selected are
+             what tell a screen reader this is a tab set rather than three
+             unrelated buttons. -->
+        <div class="inspect-tabs" role="tablist" aria-label="Location details">
+            <button class="inspect-tab is-active" id="tab-conditions" role="tab"
+                    aria-selected="true" aria-controls="panel-conditions"
+                    data-tab="conditions">Conditions</button>
+            <button class="inspect-tab" id="tab-tonight" role="tab"
+                    aria-selected="false" aria-controls="panel-tonight"
+                    data-tab="tonight">Tonight</button>
+            <button class="inspect-tab" id="tab-forecast" role="tab"
+                    aria-selected="false" aria-controls="panel-forecast"
+                    data-tab="forecast">Forecast</button>
+        </div>
+
         <div class="inspect-content">
-            <!-- How dark it is, read from the light pollution atlas -->
-            <section class="inspect-section">
-                <h3>Sky quality</h3>
-                <div class="darkness-bar">
-                    <div id="darkness-fill" class="darkness-fill" style="width: 0%"></div>
-                </div>
-                <p id="darkness-label" class="darkness-label">—</p>
-                <p id="darkness-detail" class="text-small text-secondary"></p>
-                <!-- The Bortle number is secondary and always hedged. The atlas
-                     measures brightness straight up; Bortle is what an observer
-                     judges across the whole sky. The link explains the gap, in
-                     the atlas author's own words. -->
-                <p class="inspect-note">
-                    <span id="darkness-bortle"></span>
-                    <a href="https://djlorenz.github.io/astronomy/lp/bortle.html" target="_blank" rel="noopener">Why only rough?</a>
-                </p>
-            </section>
 
-            <!-- Conditions right now -->
-            <section class="inspect-section">
-                <h3>Weather now</h3>
-                <div class="stat-grid stat-grid-auto">
-                    <div class="stat">
-                        <span class="stat-name">Temp</span>
-                        <span id="temp-current" class="stat-value">—</span>
-                    </div>
-                    <div class="stat">
-                        <span class="stat-name">Cloud</span>
-                        <span id="cloud-current" class="stat-value">—</span>
-                    </div>
-                    <div class="stat">
-                        <span class="stat-name">Vis</span>
-                        <span id="visibility-current" class="stat-value">—</span>
-                    </div>
-                    <div class="stat">
-                        <span class="stat-name">Humid</span>
-                        <span id="humidity-current" class="stat-value">—</span>
-                    </div>
-                    <div class="stat">
-                        <span class="stat-name">Wind</span>
-                        <span id="wind-current" class="stat-value">—</span>
-                    </div>
-                </div>
-            </section>
+            <!-- ================= CONDITIONS: is this spot any good? ========= -->
+            <div class="tab-panel" id="panel-conditions" role="tabpanel"
+                 aria-labelledby="tab-conditions" data-tab="conditions">
 
-            <!-- Tonight's observing hours, averaged -->
-            <section class="inspect-section">
-                <h3>Tonight, 8pm–4am</h3>
-                <div class="stat-grid stat-grid-4">
-                    <div class="stat">
-                        <span class="stat-name">Cloud</span>
-                        <span id="night-cloud-total" class="stat-value">—</span>
+                <section class="inspect-section">
+                    <h3>Sky quality</h3>
+                    <div class="darkness-bar">
+                        <div id="darkness-fill" class="darkness-fill" style="width: 0%"></div>
                     </div>
-                    <div class="stat">
-                        <span class="stat-name">Low</span>
-                        <span id="night-cloud-low" class="stat-value">—</span>
+                    <p id="darkness-label" class="darkness-label">&mdash;</p>
+                    <p id="darkness-detail" class="text-small text-secondary"></p>
+                    <!-- The Bortle number is secondary and always hedged. The atlas
+                         measures brightness straight up; Bortle is what an observer
+                         judges across the whole sky. -->
+                    <p class="inspect-note">
+                        <span id="darkness-bortle"></span>
+                        <a href="https://djlorenz.github.io/astronomy/bortle.html" target="_blank" rel="noopener">Why only rough?</a>
+                    </p>
+                </section>
+
+                <section class="inspect-section">
+                    <h3>Weather now</h3>
+                    <div class="stat-grid stat-grid-auto">
+                        <div class="stat">
+                            <span class="stat-name">Temp</span>
+                            <span id="temp-current" class="stat-value">&mdash;</span>
+                        </div>
+                        <div class="stat">
+                            <span class="stat-name">Cloud</span>
+                            <span id="cloud-current" class="stat-value">&mdash;</span>
+                        </div>
+                        <div class="stat">
+                            <span class="stat-name">Vis</span>
+                            <span id="visibility-current" class="stat-value">&mdash;</span>
+                        </div>
+                        <div class="stat">
+                            <span class="stat-name">Humid</span>
+                            <span id="humidity-current" class="stat-value">&mdash;</span>
+                        </div>
+                        <div class="stat">
+                            <span class="stat-name">Wind</span>
+                            <span id="wind-current" class="stat-value">&mdash;</span>
+                        </div>
+                        <!-- Dew point is here because it is the number that ends
+                             a night: once the air cools to it, your optics fog. -->
+                        <div class="stat">
+                            <span class="stat-name">Dew</span>
+                            <span id="dew-current" class="stat-value">&mdash;</span>
+                        </div>
                     </div>
-                    <div class="stat">
-                        <span class="stat-name">Mid</span>
-                        <span id="night-cloud-mid" class="stat-value">—</span>
+                    <p id="dew-note" class="inspect-note"></p>
+                </section>
+
+                <section class="inspect-section">
+                    <h3>Observing notes</h3>
+                    <div class="stat-grid stat-grid-auto">
+                        <div class="stat">
+                            <span class="stat-name">Height</span>
+                            <span id="elevation-current" class="stat-value">&mdash;</span>
+                        </div>
+                        <div class="stat">
+                            <span class="stat-name">Seeing</span>
+                            <span id="seeing-current" class="stat-value">&mdash;</span>
+                        </div>
                     </div>
-                    <div class="stat">
-                        <span class="stat-name">High</span>
-                        <span id="night-cloud-high" class="stat-value">—</span>
+                    <p id="seeing-note" class="inspect-note"></p>
+                </section>
+            </div>
+
+            <!-- ================= TONIGHT: what is actually up ================ -->
+            <div class="tab-panel hidden" id="panel-tonight" role="tabpanel"
+                 aria-labelledby="tab-tonight" data-tab="tonight">
+
+                <section class="inspect-section">
+                    <h3>The night</h3>
+                    <!-- One bar showing sunset, the hours of real darkness, when
+                         the moon is up, and sunrise. Drawn by js/tonightsky.js. -->
+                    <svg id="night-timeline" class="night-timeline" viewBox="0 0 300 40"
+                         preserveAspectRatio="none" role="img"
+                         aria-label="Timeline of tonight's darkness and moonlight"></svg>
+                    <p id="sky-window" class="inspect-note"></p>
+                </section>
+
+                <section class="inspect-section">
+                    <h3>Cloud, 8pm&ndash;4am</h3>
+                    <div class="stat-grid stat-grid-4">
+                        <div class="stat">
+                            <span class="stat-name">Cloud</span>
+                            <span id="night-cloud-total" class="stat-value">&mdash;</span>
+                        </div>
+                        <div class="stat">
+                            <span class="stat-name">Low</span>
+                            <span id="night-cloud-low" class="stat-value">&mdash;</span>
+                        </div>
+                        <div class="stat">
+                            <span class="stat-name">Mid</span>
+                            <span id="night-cloud-mid" class="stat-value">&mdash;</span>
+                        </div>
+                        <div class="stat">
+                            <span class="stat-name">High</span>
+                            <span id="night-cloud-high" class="stat-value">&mdash;</span>
+                        </div>
                     </div>
-                </div>
-                <p id="night-clearest" class="inspect-note"></p>
-            </section>
+                    <p id="night-clearest" class="inspect-note"></p>
+                </section>
 
-            <!-- The next three nights at a glance -->
-            <section class="inspect-section">
-                <h3>Next 3 nights</h3>
-                <div id="forecast-nights" class="forecast-nights">
-                    <!-- Cards are built by js/inspect.js -->
-                </div>
-            </section>
-
-            <!-- What is actually up there tonight.
-
-                 Every number in this section is calculated on the spot by
-                 js/tonightsky.js — there is no API behind it, so it keeps
-                 working with the network unplugged. -->
-            <section class="inspect-section">
-                <h3>Tonight's sky</h3>
-
-                <!-- The moon, drawn as an SVG rather than an emoji. Emoji are
-                     painted as fixed full-colour glyphs, which would put white
-                     and blue pixels on screen in Astronomer mode; this path
-                     inherits currentColor and follows the theme. -->
-                <div class="moon-row">
-                    <svg class="moon-glyph" viewBox="0 0 32 32" aria-hidden="true">
-                        <g id="moon-glyph-group">
-                            <circle class="moon-disc" cx="16" cy="16" r="14"/>
-                            <path id="moon-lit" class="moon-lit" d=""/>
-                        </g>
-                    </svg>
-                    <div class="moon-text">
-                        <span id="moon-phase" class="moon-phase">&mdash;</span>
-                        <span id="moon-detail" class="text-small text-secondary"></span>
+                <section class="inspect-section">
+                    <h3>Moon &amp; Milky Way</h3>
+                    <div class="moon-row">
+                        <svg class="moon-glyph" viewBox="0 0 32 32" aria-hidden="true">
+                            <g id="moon-glyph-group">
+                                <circle class="moon-disc" cx="16" cy="16" r="14"/>
+                                <path id="moon-lit" class="moon-lit" d=""/>
+                            </g>
+                        </svg>
+                        <div class="moon-text">
+                            <span id="moon-phase" class="moon-phase">&mdash;</span>
+                            <span id="moon-detail" class="text-small text-secondary"></span>
+                        </div>
                     </div>
-                </div>
 
-                <!-- Milky Way. This one is a judgement call rather than a
-                     measurement, so it says so on the label. -->
-                <div class="milkyway">
-                    <div class="milkyway-top">
-                        <span class="milkyway-label">Milky Way <span class="estimate-tag">estimate</span></span>
-                        <span id="milkyway-headline" class="milkyway-headline"></span>
+                    <div class="milkyway">
+                        <div class="milkyway-top">
+                            <span class="milkyway-label">Milky Way <span class="estimate-tag">estimate</span></span>
+                            <span id="milkyway-headline" class="milkyway-headline"></span>
+                        </div>
+                        <p id="milkyway-reason" class="text-small text-secondary"></p>
                     </div>
-                    <p id="milkyway-reason" class="text-small text-secondary"></p>
-                </div>
+                </section>
 
-                <!-- Naked-eye planets that climb high enough to be worth
-                     looking for. Filled in by js/tonightsky.js. -->
-                <ul id="planet-list" class="planet-list"></ul>
+                <section class="inspect-section">
+                    <h3>Planets</h3>
+                    <ul id="planet-list" class="planet-list"></ul>
+                </section>
 
-                <p id="sky-window" class="inspect-note"></p>
-            </section>
+                <section class="inspect-section">
+                    <h3>Deep sky</h3>
+                    <!-- Showpiece objects that clear the horizon tonight.
+                         Filled in by js/deepsky.js. -->
+                    <ul id="dso-list" class="planet-list"></ul>
+                </section>
 
-            <button id="stellarium-button" class="action-button">
-                Open in Stellarium Web
-            </button>
+                <button id="stellarium-button" class="action-button">
+                    Open in Stellarium Web
+                </button>
+            </div>
+
+            <!-- ================= FORECAST: which night to go =================== -->
+            <div class="tab-panel hidden" id="panel-forecast" role="tabpanel"
+                 aria-labelledby="tab-forecast" data-tab="forecast">
+
+                <section class="inspect-section">
+                    <h3>Next 7 nights</h3>
+                    <div id="forecast-nights" class="forecast-nights">
+                        <!-- Cards are built by js/inspect.js -->
+                    </div>
+                    <p id="forecast-best" class="inspect-note"></p>
+                </section>
+
+                <section class="inspect-section">
+                    <h3>Coming up</h3>
+                    <!-- Meteor showers, eclipses and conjunctions.
+                         Filled in by js/events.js. -->
+                    <ul id="events-list" class="events-list"></ul>
+                </section>
+            </div>
 
             <footer class="inspect-footer">
                 <small class="text-secondary">
-                    <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a> ·
-                    <a href="https://open-meteo.com/" target="_blank" rel="noopener">Open-Meteo</a> ·
+                    <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a> &middot;
+                    <a href="https://open-meteo.com/" target="_blank" rel="noopener">Open-Meteo</a> &middot;
                     <a href="https://djlorenz.github.io/astronomy/lp/" target="_blank" rel="noopener">Lorenz atlas</a> &middot;
                     <a href="https://github.com/cosinekitty/astronomy" target="_blank" rel="noopener">astronomy-engine</a>
                 </small>
@@ -451,6 +519,8 @@
     <script src="js/lightpollution.js?v=10"></script>
     <script src="js/skyquality.js?v=10"></script>
     <script src="js/tonightsky.js?v=10"></script>
+    <script src="js/deepsky.js?v=10"></script>
+    <script src="js/events.js?v=10"></script>
     <script src="js/inspect.js?v=10"></script>
     <script src="js/search.js?v=10"></script>
     <script src="js/favourites.js?v=10"></script>
@@ -458,5 +528,19 @@
     <script src="js/darkskyplaces.js?v=10"></script>
     <script src="js/recommend.js?v=10"></script>
     <script src="js/theme.js?v=10"></script>
+
+    <!-- Offline support. Registered last and wrapped in a check, because a
+         service worker is an enhancement: if the browser has no support, or the
+         page is served over plain http where they are not allowed, everything
+         above still works exactly as before. See sw.js for what it keeps. -->
+    <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', function () {
+                navigator.serviceWorker.register('sw.js').catch(function (error) {
+                    console.warn('Offline support unavailable:', error);
+                });
+            });
+        }
+    </script>
 </body>
 </html>

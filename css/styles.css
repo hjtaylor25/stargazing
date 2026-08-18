@@ -948,6 +948,137 @@ html[data-theme="astronomer"] .inspect-marker {
 }
 
 /* ----------------------------------------------------------------------------
+   TABS
+
+   Three of them, so the panel holds a lot but shows a third of it. The tab
+   strip sits between the fixed header and the scrollable body, so it never
+   scrolls away.
+   -------------------------------------------------------------------------- */
+
+.inspect-tabs {
+    display: flex;
+    flex-shrink: 0;
+    border-bottom: 1px solid var(--color-panel-border);
+}
+
+.inspect-tab {
+    flex: 1;
+    background: none;
+    border: none;
+    /* A transparent underline that is always there, so nothing shifts by two
+       pixels when a tab becomes active. */
+    border-bottom: 2px solid transparent;
+    padding: 0.5rem 0.25rem;
+    color: var(--color-text-secondary);
+    font-family: var(--font-brand);
+    font-size: 0.64rem;
+    font-weight: 500;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: color 0.2s ease, border-color 0.2s ease;
+}
+
+.inspect-tab:hover {
+    color: var(--color-text);
+}
+
+.inspect-tab.is-active {
+    color: var(--color-accent);
+    border-bottom-color: var(--color-accent);
+}
+
+.tab-panel {
+    display: flex;
+    flex-direction: column;
+    gap: 0.7rem;
+}
+
+/* Beats the plain .hidden utility, whichever order the two end up in. */
+.tab-panel.hidden {
+    display: none;
+}
+
+/* ----------------------------------------------------------------------------
+   The night timeline
+
+   One bar for the whole night: twilight, real darkness, and when the moon is
+   up over the top of it. Drawn as SVG by js/tonightsky.js, in theme colours.
+   -------------------------------------------------------------------------- */
+
+.night-timeline {
+    display: block;
+    width: 100%;
+    height: 40px;
+}
+
+/* Twilight: the sky is not dark yet, but the sun has gone. */
+.timeline-twilight {
+    fill: currentColor;
+    opacity: 0.18;
+}
+
+/* Real astronomical darkness — the part of the night worth having. */
+.timeline-dark {
+    fill: var(--color-accent);
+    opacity: 0.55;
+}
+
+/* When the moon is up. Deliberately the muted colour rather than the accent:
+   moonlight is the thing working against you here, not a feature. */
+.timeline-moon {
+    fill: var(--color-text-secondary);
+    opacity: 0.8;
+}
+
+.timeline-label {
+    fill: var(--color-text-secondary);
+    font-size: 9px;
+    font-variant-numeric: tabular-nums;
+}
+
+/* ----------------------------------------------------------------------------
+   Coming up — meteor showers, eclipses, conjunctions
+   -------------------------------------------------------------------------- */
+
+.events-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+}
+
+.event {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    align-items: baseline;
+    gap: 0 0.5rem;
+    padding: 0.35rem 0;
+    border-top: 1px solid var(--color-panel-border);
+}
+
+.event:first-child {
+    border-top: none;
+}
+
+.event-name {
+    font-size: 0.82rem;
+    font-weight: 600;
+}
+
+.event-when {
+    font-size: 0.72rem;
+    color: var(--color-accent);
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+}
+
+.event-detail {
+    grid-column: 1 / -1;
+    font-size: 0.72rem;
+    color: var(--color-text-secondary);
+}
+
+/* ----------------------------------------------------------------------------
    Stat tiles
 
    Used by both "Weather now" and "Tonight". A grid of small tiles packs the
@@ -1068,44 +1199,82 @@ html[data-theme="astronomer"] .inspect-marker {
    3-night outlook cards
    -------------------------------------------------------------------------- */
 
+/* ----------------------------------------------------------------------------
+   The week ahead
+
+   Rows, not cards. Seven cards across a 380px panel would each be too narrow
+   to read, and the question here — "which night should I go?" — is answered by
+   running your eye DOWN a column, comparing like with like.
+   -------------------------------------------------------------------------- */
+
 .forecast-nights {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 0.4rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.1rem;
 }
 
+/* day | moon | how-clear bar | cloud figure */
 .forecast-night {
-    padding: 0.45rem 0.3rem;
-    background-color: var(--color-bg);
-    border: 1px solid var(--color-border);
-    border-radius: 5px;
-    text-align: center;
+    display: grid;
+    grid-template-columns: 3.1rem auto 1fr 2.4rem;
+    align-items: center;
+    gap: 0.45rem;
+    padding: 0.28rem 0.1rem;
+    border-top: 1px solid var(--color-panel-border);
     min-width: 0;
+}
+
+.forecast-night:first-child {
+    border-top: none;
 }
 
 .forecast-date {
     font-weight: 600;
     color: var(--color-text);
-    font-size: 0.7rem;
+    font-size: 0.74rem;
+}
+
+.forecast-moon-cell {
+    display: flex;
+    align-items: center;
+    gap: 0.22rem;
+}
+
+/* The same glyph as the big one in Tonight, drawn small. It leans the correct
+   way for the hemisphere, so a waxing moon in Australia is lit on the left. */
+.moon-glyph-small {
+    width: 15px;
+    height: 15px;
+    flex: none;
+    color: var(--color-text);
+}
+
+.forecast-moon-pct {
+    font-size: 0.66rem;
+    color: var(--color-text-secondary);
+    font-variant-numeric: tabular-nums;
+    min-width: 2.1rem;
 }
 
 .forecast-cloud {
     color: var(--color-accent);
     font-weight: 600;
-    font-size: 0.95rem;
+    font-size: 0.78rem;
     font-variant-numeric: tabular-nums;
+    text-align: right;
 }
 
 /* The bar shows how CLEAR the night is, so longer is always better. */
 .forecast-bar {
-    height: 4px;
-    margin: 0.3rem 0.15rem 0.25rem;
+    display: block;
+    height: 5px;
     background-color: var(--color-border);
-    border-radius: 2px;
+    border-radius: 3px;
     overflow: hidden;
 }
 
 .forecast-bar-fill {
+    display: block;
     height: 100%;
     background-color: var(--color-accent);
     transition: width 0.3s ease;
@@ -1667,12 +1836,20 @@ html[data-theme="astronomer"] .inspect-marker {
     color: var(--color-text);
 }
 
-/* The unlit part: just an outline, so a new moon is still visible as a disc. */
+/* The unlit part.
+
+   This used to be an outline only, which meant a thin crescent read as a
+   bright sliver floating in nothing and the phase was hard to judge at a
+   glance. Filling it faintly gives the lit part something to be a fraction OF,
+   so the difference between a crescent, a half and a gibbous moon is obvious
+   at 32 pixels. The fill is a low-opacity currentColor, so it still themes
+   itself and stays red in Astronomer mode. */
 .moon-disc {
-    fill: none;
+    fill: currentColor;
+    fill-opacity: 0.16;
     stroke: currentColor;
     stroke-width: 1;
-    opacity: 0.35;
+    stroke-opacity: 0.4;
 }
 
 /* The lit part. js/tonightsky.js rewrites this path for each phase. */

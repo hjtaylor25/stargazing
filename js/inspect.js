@@ -40,8 +40,38 @@ const NIGHT_END_HOUR = 4;
 
 // How many nights the outlook shows. We ask for one extra day of forecast
 // because the last night runs past midnight into the following morning.
-const OUTLOOK_NIGHTS = 3;
+//
+// Seven, because the question a stargazer actually has is not "what is it like
+// tonight" but "which night this week should I go". Open-Meteo will give up to
+// sixteen days for free; seven is the range where the forecast is still worth
+// believing.
+const OUTLOOK_NIGHTS = 7;
 const FORECAST_DAYS = OUTLOOK_NIGHTS + 1;
+
+/* ----------------------------------------------------------------------------
+   Seeing, estimated from the jet stream
+
+   "Seeing" is how steady the air is — whether a star sits as a clean point or
+   boils. It is not forecast directly by any free service, but the strongest
+   single driver is high-altitude wind shear, so the wind speed at the 250 hPa
+   pressure level (about 10 km up, where the jet stream lives) is the standard
+   proxy. Slow air up there means steady stars.
+
+   These bands are the usual convention, in km/h. Like the Milky Way rating,
+   this is an informed estimate and the panel says so.
+   -------------------------------------------------------------------------- */
+
+const SEEING_BANDS = [
+    { upTo: 40,       label: 'Excellent' },
+    { upTo: 80,       label: 'Good' },
+    { upTo: 120,      label: 'Average' },
+    { upTo: 160,      label: 'Poor' },
+    { upTo: Infinity, label: 'Very poor' }
+];
+
+// Within this many degrees of the dew point, moisture starts settling on cold
+// glass and a night can end early with fogged optics.
+const DEW_WARNING_MARGIN = 2.5;
 
 /* ----------------------------------------------------------------------------
    State
@@ -97,12 +127,81 @@ function initializeInspect() {
         }
     });
 
+    initializeInspectTabs();
+
     // Work out the panel's position now, so the very first open is already
     // correct rather than settling into place, then keep watching for changes.
     positionInspectPanel();
     watchControlsHeight();
 
     console.log('✓ Tap-to-inspect initialized');
+}
+
+/* ============================================================================
+   Tabs
+
+   The panel holds three tabs' worth of detail. Only one is on screen, which is
+   what keeps it a fixed, readable height however much goes into it.
+
+   The choice is remembered, because people have a favourite: someone checking
+   whether tonight is worth it wants Conditions every time, and someone
+   planning a trip wants Forecast every time. Making them re-pick on every tap
+   would be tiresome.
+   ============================================================================ */
+
+const INSPECT_TAB_STORAGE_KEY = 'astromap-inspect-tab';
+const INSPECT_TABS = ['conditions', 'tonight', 'forecast'];
+
+function initializeInspectTabs() {
+    const tabs = Array.from(document.querySelectorAll('.inspect-tab'));
+
+    tabs.forEach(function (tab) {
+        tab.addEventListener('click', function () {
+            showInspectTab(tab.getAttribute('data-tab'));
+        });
+    });
+
+    // Left and right arrows move between tabs, which is what a keyboard user
+    // expects of a tab strip and what the ARIA pattern calls for.
+    const strip = document.querySelector('.inspect-tabs');
+    if (strip) {
+        strip.addEventListener('keydown', function (event) {
+            if (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight') return;
+
+            const current = tabs.indexOf(document.activeElement);
+            if (current < 0) return;
+
+            event.preventDefault();
+            const step = event.key === 'ArrowRight' ? 1 : -1;
+            // Wraps around, so you can keep pressing in one direction.
+            const next = (current + step + tabs.length) % tabs.length;
+
+            tabs[next].focus();
+            showInspectTab(tabs[next].getAttribute('data-tab'));
+        });
+    }
+
+    const remembered = localStorage.getItem(INSPECT_TAB_STORAGE_KEY);
+    showInspectTab(INSPECT_TABS.includes(remembered) ? remembered : 'conditions');
+}
+
+function showInspectTab(name) {
+    if (!INSPECT_TABS.includes(name)) return;
+
+    document.querySelectorAll('.inspect-tab').forEach(function (tab) {
+        const isActive = tab.getAttribute('data-tab') === name;
+        tab.classList.toggle('is-active', isActive);
+        // aria-selected is what a screen reader announces; the class only paints.
+        tab.setAttribute('aria-selected', String(isActive));
+        // Only the selected tab is in the tab order — arrows move between them.
+        tab.tabIndex = isActive ? 0 : -1;
+    });
+
+    document.querySelectorAll('.tab-panel').forEach(function (panel) {
+        panel.classList.toggle('hidden', panel.getAttribute('data-tab') !== name);
+    });
+
+    localStorage.setItem(INSPECT_TAB_STORAGE_KEY, name);
 }
 
 /* ============================================================================
@@ -318,8 +417,11 @@ async function fetchWeather(lat, lng) {
         const params = new URLSearchParams({
             latitude: lat.toString(),
             longitude: lng.toString(),
-            current: 'temperature_2m,relative_humidity_2m,cloud_cover,visibility,wind_speed_10m,weather_code',
-            hourly: 'cloud_cover,cloud_cover_low,cloud_cover_mid,cloud_cover_high,visibility',
+            current: 'temperature_2m,relative_humidity_2m,dew_point_2m,cloud_cover,visibility,wind_speed_10m,weather_code',
+            // dew_point_2m and temperature_2m together say whether your optics
+            // will fog; wind_speed_250hPa is the jet stream, for seeing.
+            hourly: 'cloud_cover,cloud_cover_low,cloud_cover_mid,cloud_cover_high,visibility,' +
+                    'dew_point_2m,temperature_2m,wind_speed_250hPa',
             forecast_days: FORECAST_DAYS.toString(),
             temperature_unit: 'celsius',
             wind_speed_unit: 'kmh',
@@ -415,6 +517,12 @@ function summariseNights(weatherData) {
             }
         });
 
+        // How close the air gets to its dew point at the coldest part of the
+        // night — the moment optics are most likely to fog.
+        const temperatures = pick('temperature_2m').filter(v => numberOrNull(v) !== null);
+        const dewPoints = pick('dew_point_2m').filter(v => numberOrNull(v) !== null);
+        const coldest = temperatures.length ? Math.min.apply(null, temperatures) : null;
+
         nights.push({
             date: eveningDate,
             cloudTotal: average(totals),
@@ -423,7 +531,10 @@ function summariseNights(weatherData) {
             cloudHigh: average(pick('cloud_cover_high')),
             visibilityMetres: average(pick('visibility')),
             clearestHour: clearest ? clearest.hour : null,
-            clearestCloud: clearest ? clearest.cloud : null
+            clearestCloud: clearest ? clearest.cloud : null,
+            minTemperature: coldest,
+            dewPoint: average(dewPoints),
+            jetWind: average(pick('wind_speed_250hPa'))
         });
     }
 
@@ -535,10 +646,72 @@ function displayWeather(weatherData) {
     setText('visibility-current', formatVisibility(current.visibility));
     setText('humidity-current', formatValue(current.relative_humidity_2m, '%'));
     setText('wind-current', formatValue(current.wind_speed_10m, ' km/h'));
+    setText('dew-current', formatValue(current.dew_point_2m, '°C'));
+
+    // Open-Meteo tells us the ground height of the nearest model cell, free,
+    // in every reply. Height matters: you climb above haze and low cloud, and
+    // the air above you is thinner.
+    setText('elevation-current', formatValue(weatherData.elevation, ' m'));
 
     const nights = summariseNights(weatherData);
     displayTonight(nights[0]);
-    displayOutlook(nights);
+    displayDewOutlook(nights[0], current);
+    displaySeeing(nights[0]);
+
+    // The moon glyphs in the outlook lean the correct way for the hemisphere,
+    // so the outlook needs to know where it is describing.
+    displayOutlook(nights, weatherData.latitude, weatherData.utc_offset_seconds || 0);
+}
+
+/**
+ * How likely is dew tonight?
+ *
+ * Air holds less moisture as it cools. When the temperature falls to the dew
+ * point, the extra has to go somewhere, and cold glass pointed at a cold sky is
+ * the first place it lands. A telescope can be dewed up and useless while the
+ * sky overhead is perfectly clear, which is why this is worth its own line.
+ */
+function displayDewOutlook(tonight, current) {
+    const spreadNow = numberOrNull(current.temperature_2m) !== null
+                   && numberOrNull(current.dew_point_2m) !== null
+        ? current.temperature_2m - current.dew_point_2m
+        : null;
+
+    if (!tonight || numberOrNull(tonight.minTemperature) === null
+                 || numberOrNull(tonight.dewPoint) === null) {
+        setText('dew-note', spreadNow === null
+            ? ''
+            : `${spreadNow.toFixed(1)}° above the dew point right now.`);
+        return;
+    }
+
+    const overnightMargin = tonight.minTemperature - tonight.dewPoint;
+
+    if (overnightMargin <= 0) {
+        setText('dew-note', 'The air reaches its dew point tonight — expect dew on optics.');
+    } else if (overnightMargin < DEW_WARNING_MARGIN) {
+        setText('dew-note',
+            `Only ${overnightMargin.toFixed(1)}° above the dew point at its coldest — dew is likely.`);
+    } else {
+        setText('dew-note',
+            `${overnightMargin.toFixed(1)}° above the dew point at its coldest — dew unlikely.`);
+    }
+}
+
+function displaySeeing(tonight) {
+    const jet = tonight ? numberOrNull(tonight.jetWind) : null;
+
+    if (jet === null) {
+        setText('seeing-current', '—');
+        setText('seeing-note', '');
+        return;
+    }
+
+    const band = SEEING_BANDS.find(entry => jet < entry.upTo);
+    setText('seeing-current', band.label);
+    setText('seeing-note',
+        `Estimated from ${Math.round(jet)} km/h of jet stream overhead. ` +
+        'Steady high air means stars sit still rather than boiling.');
 }
 
 function showWeatherUnavailable() {
@@ -550,6 +723,12 @@ function showWeatherUnavailable() {
     setText('night-cloud-mid', '—');
     setText('night-cloud-high', '—');
     setText('night-clearest', '');
+    setText('dew-current', '—');
+    setText('dew-note', '');
+    setText('elevation-current', '—');
+    setText('seeing-current', '—');
+    setText('seeing-note', '');
+    setText('forecast-best', '');
 
     const forecastContainer = document.getElementById('forecast-nights');
     if (forecastContainer) {
@@ -589,17 +768,22 @@ function displayTonight(night) {
 }
 
 /**
- * The 3-night outlook: one small card per night.
+ * The week ahead: one row per night, so you can run your eye down the column
+ * and pick a night rather than comparing seven separate cards.
  *
- * Cards are built with createElement rather than innerHTML because the place
- * names and numbers come from the internet, and building nodes directly means
- * none of it can ever be treated as markup.
+ * Cloud alone does not answer the question. A perfectly clear night with a
+ * full moon overhead is a poor night for anything faint, so the moon is shown
+ * beside the cloud and both feed the "best night" line underneath.
+ *
+ * Rows are built with createElement rather than innerHTML, matching the rest
+ * of the app.
  */
-function displayOutlook(nights) {
+function displayOutlook(nights, latitude, utcOffsetSeconds) {
     const container = document.getElementById('forecast-nights');
     if (!container) return;
 
     container.innerHTML = '';
+    setText('forecast-best', '');
 
     if (nights.length === 0) {
         container.innerHTML =
@@ -608,38 +792,99 @@ function displayOutlook(nights) {
     }
 
     nights.forEach(function (night, position) {
-        const card = document.createElement('div');
-        card.className = 'forecast-night';
+        const moon = (typeof moonOnNight === 'function')
+            ? moonOnNight(night.date, utcOffsetSeconds)
+            : null;
 
-        const label = document.createElement('div');
+        const row = document.createElement('div');
+        row.className = 'forecast-night';
+
+        const label = document.createElement('span');
         label.className = 'forecast-date';
         label.textContent = position === 0 ? 'Tonight' : weekdayName(night.date);
 
-        const value = document.createElement('div');
-        value.className = 'forecast-cloud';
-        value.textContent = formatValue(night.cloudTotal, '%');
+        // Moon glyph and its lit percentage, side by side.
+        const moonCell = document.createElement('span');
+        moonCell.className = 'forecast-moon-cell';
+        if (moon && typeof createMoonGlyph === 'function') {
+            moonCell.appendChild(
+                createMoonGlyph(moon.illumination, moon.waxing, latitude, 'moon-glyph-small'));
+            const pct = document.createElement('span');
+            pct.className = 'forecast-moon-pct';
+            pct.textContent = `${Math.round(moon.illumination * 100)}%`;
+            moonCell.appendChild(pct);
+            moonCell.title = `${moon.phaseName}, ${Math.round(moon.illumination * 100)}% lit`;
+        }
 
-        // A bar is easier to compare at a glance than three numbers. It is
-        // drawn as "how clear", so a longer bar always means a better night.
+        // Drawn as "how clear", so a longer bar always means a better night.
         const clearness = numberOrNull(night.cloudTotal) === null
             ? 0
             : 100 - night.cloudTotal;
 
-        const track = document.createElement('div');
+        const track = document.createElement('span');
         track.className = 'forecast-bar';
-
-        const fill = document.createElement('div');
+        const fill = document.createElement('span');
         fill.className = 'forecast-bar-fill';
         fill.style.width = clearness + '%';
         track.appendChild(fill);
 
-        const caption = document.createElement('div');
-        caption.className = 'forecast-caption';
-        caption.textContent = describeCloud(night.cloudTotal);
+        const value = document.createElement('span');
+        value.className = 'forecast-cloud';
+        value.textContent = formatValue(night.cloudTotal, '%');
+        value.title = describeCloud(night.cloudTotal);
 
-        card.append(label, value, track, caption);
-        container.appendChild(card);
+        row.append(label, moonCell, track, value);
+        container.appendChild(row);
     });
+
+    displayBestNight(nights, utcOffsetSeconds);
+}
+
+/* ----------------------------------------------------------------------------
+   Which night to go
+
+   Cloud matters most — no amount of moonless sky helps under an overcast — but
+   a bright moon washes out everything faint, so it carries real weight too.
+   Seventy/thirty reflects that: the moon can demote a night, but it cannot
+   rescue a cloudy one.
+
+   This is a suggestion, not a verdict, and it is worded as one.
+   -------------------------------------------------------------------------- */
+
+const BEST_NIGHT_CLOUD_WEIGHT = 0.7;
+const BEST_NIGHT_MOON_WEIGHT = 0.3;
+
+function displayBestNight(nights, utcOffsetSeconds) {
+    let best = null;
+
+    nights.forEach(function (night, position) {
+        const cloud = numberOrNull(night.cloudTotal);
+        if (cloud === null) return;
+
+        const moon = (typeof moonOnNight === 'function')
+            ? moonOnNight(night.date, utcOffsetSeconds)
+            : null;
+        const moonLit = moon ? moon.illumination * 100 : 0;
+
+        const score = BEST_NIGHT_CLOUD_WEIGHT * (100 - cloud)
+                    + BEST_NIGHT_MOON_WEIGHT * (100 - moonLit);
+
+        if (!best || score > best.score) {
+            best = { score: score, position: position, night: night, moonLit: moonLit };
+        }
+    });
+
+    if (!best) {
+        setText('forecast-best', '');
+        return;
+    }
+
+    const name = best.position === 0 ? 'tonight' : weekdayName(best.night.date);
+
+    setText('forecast-best',
+        `Best of the week looks like ${name} — ` +
+        `${Math.round(best.night.cloudTotal)}% cloud, ` +
+        `${Math.round(best.moonLit)}% moon.`);
 }
 
 /**

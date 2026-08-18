@@ -630,10 +630,18 @@ function formatSkyTime(date, utcOffsetSeconds) {
    equals r and closes the circle. The sweep flag flips at half moon so the
    terminator bulges the correct way for a crescent versus a gibbous moon.
 
-   One honest caveat: this is a schematic. The real moon's orientation in the
-   sky depends on your latitude and the time of night — it appears mirrored
-   from the southern hemisphere — so treat this as "which phase", not "which
-   way up".
+   WHICH SIDE IS LIT
+   -----------------
+   In the northern hemisphere a waxing moon is lit on the right. From the
+   southern hemisphere you are, in effect, standing upside down relative to
+   that, and the same moon appears lit on the LEFT. This app opens on Australia,
+   so drawing the northern convention everywhere would show most of its users a
+   mirror image of the moon actually in their sky.
+
+   setMoonGlyph() below therefore flips the glyph below the equator. The exact
+   tilt also drifts through the night as the moon crosses the sky, which no
+   static picture can show — so this is still "which phase, leaning the right
+   way", not a photograph.
    ============================================================================ */
 
 function moonPhasePath(illumination) {
@@ -672,7 +680,7 @@ function showTonightSkyLoading() {
     const list = document.getElementById('planet-list');
     if (list) list.innerHTML = '';
 
-    setMoonGlyph(0, true);
+    setMoonGlyph(0, true, 0);
 }
 
 /**
@@ -692,9 +700,27 @@ function displayTonightSky(lat, lng, utcOffsetSeconds, skyQuality, offsetIsEstim
     const milkyWay = sky.milkyWay || assessMilkyWayFallback();
 
     renderNightWindow(sky.night, utcOffsetSeconds, offsetIsEstimated);
-    renderMoon(sky.moon, utcOffsetSeconds);
+    renderNightTimeline(sky.night, sky.moon, utcOffsetSeconds);
+    renderMoon(sky.moon, utcOffsetSeconds, lat);
     renderMilkyWay(milkyWay);
     renderPlanets(sky.planets, utcOffsetSeconds, sky.night);
+
+    // The deep-sky list needs the same night window, so it is driven from here
+    // rather than working the whole thing out again. (js/deepsky.js)
+    //
+    // Both of these are checked before being called. They are extra sections
+    // rather than core ones, and if either file failed to load, losing that
+    // section is a fair price — losing the moon, the planets and the Milky Way
+    // along with it would not be.
+    if (typeof renderDeepSky === 'function') {
+        renderDeepSky(lat, lng, sky.night, utcOffsetSeconds, skyQuality);
+    }
+
+    // What is coming up in the months ahead, checked from this point.
+    // (js/events.js)
+    if (typeof renderEvents === 'function') {
+        renderEvents(lat, lng, utcOffsetSeconds);
+    }
 }
 
 function showTonightSkyUnavailable() {
@@ -707,7 +733,7 @@ function showTonightSkyUnavailable() {
     const list = document.getElementById('planet-list');
     if (list) list.innerHTML = '';
 
-    setMoonGlyph(0, true);
+    setMoonGlyph(0, true, 0);
 }
 
 /** Used only under the midnight sun, where there is no night to assess. */
@@ -756,8 +782,8 @@ function renderNightWindow(night, utcOffsetSeconds, offsetIsEstimated) {
     );
 }
 
-function renderMoon(moon, utcOffsetSeconds) {
-    setMoonGlyph(moon.illumination, moon.waxing);
+function renderMoon(moon, utcOffsetSeconds, latitude) {
+    setMoonGlyph(moon.illumination, moon.waxing, latitude);
 
     setText(
         'moon-phase',
@@ -786,16 +812,200 @@ function renderMoon(moon, utcOffsetSeconds) {
  * Update the moon glyph's shape. The path is regenerated rather than swapping
  * images, so every phase in between is drawn correctly too.
  */
-function setMoonGlyph(illumination, waxing) {
+function setMoonGlyph(illumination, waxing, latitude) {
     const lit = document.getElementById('moon-lit');
     const group = document.getElementById('moon-glyph-group');
 
     if (lit) lit.setAttribute('d', moonPhasePath(illumination));
 
-    // Mirror the whole glyph for a waning moon, so the lit side swaps over.
+    // The path is always drawn lit-on-the-right, so the glyph is mirrored
+    // whenever that is not what the observer would see.
+    //
+    // Waxing lights the right in the north and the left in the south, and
+    // waning does the opposite — so the two conditions cancel out. Writing it
+    // as "these two disagree" is the whole rule:
+    //
+    //     north + waxing -> right      south + waxing -> left
+    //     north + waning -> left       south + waning -> right
     if (group) {
-        group.setAttribute('transform', waxing ? '' : 'translate(32,0) scale(-1,1)');
+        group.setAttribute('transform',
+            moonLitOnRight(waxing, latitude) ? '' : 'translate(32,0) scale(-1,1)');
     }
+}
+
+/** See the rule written out above setMoonGlyph(). */
+function moonLitOnRight(waxing, latitude) {
+    const southernHemisphere = latitude < 0;
+    return waxing !== southernHemisphere;
+}
+
+/**
+ * Build a small standalone moon glyph, for the forecast rows.
+ *
+ * Same path and the same mirror rule as the big one in the panel, so a phase
+ * cannot be drawn one way in one place and another way somewhere else.
+ */
+function createMoonGlyph(illumination, waxing, latitude, className) {
+    const NS = SVG_NS;
+
+    const svg = document.createElementNS(NS, 'svg');
+    svg.setAttribute('class', className || 'moon-glyph-small');
+    svg.setAttribute('viewBox', '0 0 32 32');
+    svg.setAttribute('aria-hidden', 'true');
+
+    const group = document.createElementNS(NS, 'g');
+    if (!moonLitOnRight(waxing, latitude)) {
+        group.setAttribute('transform', 'translate(32,0) scale(-1,1)');
+    }
+
+    const disc = document.createElementNS(NS, 'circle');
+    disc.setAttribute('class', 'moon-disc');
+    disc.setAttribute('cx', '16');
+    disc.setAttribute('cy', '16');
+    disc.setAttribute('r', '14');
+
+    const lit = document.createElementNS(NS, 'path');
+    lit.setAttribute('class', 'moon-lit');
+    lit.setAttribute('d', moonPhasePath(illumination));
+
+    group.append(disc, lit);
+    svg.appendChild(group);
+    return svg;
+}
+
+/**
+ * What the moon is doing on a given night, for the week ahead.
+ *
+ * Sampled at 10pm local — the middle of a typical observing session — because
+ * the moon's lit fraction creeps up measurably over a single night and one
+ * number has to stand for the whole of it.
+ */
+function moonOnNight(isoDate, utcOffsetSeconds) {
+    if (typeof Astronomy === 'undefined') return null;
+
+    const [year, month, day] = isoDate.split('-').map(Number);
+    const when = new Date(Date.UTC(year, month - 1, day, 22, 0, 0) - utcOffsetSeconds * 1000);
+
+    const phaseAngle = Astronomy.MoonPhase(when);
+
+    return {
+        illumination: Astronomy.Illumination(Astronomy.Body.Moon, when).phase_fraction,
+        waxing: phaseAngle < 180,
+        phaseName: moonPhaseName(phaseAngle)
+    };
+}
+
+/* ============================================================================
+   The night, drawn as one bar
+
+   Sunset on the left, sunrise on the right, and everything that matters in
+   between: the twilight either side, the block of real astronomical darkness,
+   and a second band showing when the moon is up over the top of it.
+
+   Three lines of text saying "sunset 5:45pm, fully dark 7:13pm to 5:30am,
+   moon sets 11:48pm" is the same information, but you have to assemble the
+   picture in your head. Here the shape of the night is the shape of the bar —
+   you can see at a glance whether the moon eats the first half of it.
+   ============================================================================ */
+
+// Its own copy rather than borrowing the one in js/favourites.js — a shared
+// constant that only exists if another file happens to have loaded is a trap.
+const SVG_NS = 'http://www.w3.org/2000/svg';
+
+const TIMELINE_WIDTH = 300;
+const TIMELINE_NIGHT_TOP = 6;
+const TIMELINE_NIGHT_HEIGHT = 15;
+const TIMELINE_MOON_TOP = 24;
+const TIMELINE_MOON_HEIGHT = 6;
+
+function renderNightTimeline(night, moon, utcOffsetSeconds) {
+    const svg = document.getElementById('night-timeline');
+    if (!svg) return;
+
+    svg.innerHTML = '';
+
+    // Nothing sensible to draw without a real sunset and sunrise.
+    if (!night || night.kind !== 'normal' || !night.sunset || !night.sunrise) return;
+
+    const from = night.sunset.getTime();
+    const to = night.sunrise.getTime();
+    const span = to - from;
+    if (span <= 0) return;
+
+    // Where along the bar does a given moment fall?
+    const x = time => TIMELINE_WIDTH * (Math.min(Math.max(time, from), to) - from) / span;
+
+    // The whole night, twilight included.
+    svg.appendChild(timelineRect(0, TIMELINE_NIGHT_TOP, TIMELINE_WIDTH,
+                                 TIMELINE_NIGHT_HEIGHT, 'timeline-twilight'));
+
+    // The part that is properly dark.
+    if (night.hasTrueDarkness) {
+        const darkFrom = x(night.darkStart.getTime());
+        const darkTo = x(night.darkEnd.getTime());
+        svg.appendChild(timelineRect(darkFrom, TIMELINE_NIGHT_TOP, darkTo - darkFrom,
+                                     TIMELINE_NIGHT_HEIGHT, 'timeline-dark'));
+    }
+
+    // When the moon is above the horizon, as a band underneath.
+    const moonSpan = moonUpSpan(night, moon);
+    if (moonSpan) {
+        const moonFrom = x(moonSpan.from);
+        const moonTo = x(moonSpan.to);
+        if (moonTo > moonFrom) {
+            svg.appendChild(timelineRect(moonFrom, TIMELINE_MOON_TOP, moonTo - moonFrom,
+                                         TIMELINE_MOON_HEIGHT, 'timeline-moon'));
+        }
+    }
+
+    // Times at each end.
+    svg.appendChild(timelineLabel(0, 38, formatSkyTime(night.sunset, utcOffsetSeconds), 'start'));
+    svg.appendChild(timelineLabel(TIMELINE_WIDTH, 38,
+                                  formatSkyTime(night.sunrise, utcOffsetSeconds), 'end'));
+}
+
+/**
+ * The stretch of the night the moon is above the horizon.
+ *
+ * Worked out from where it is when darkness falls rather than by sampling
+ * again: if it is already up it will be setting, and if it is not it will be
+ * rising. Either way one of the two times is the edge we need, and the other
+ * edge is the end of the night.
+ */
+function moonUpSpan(night, moon) {
+    if (!moon || !night.sunset || !night.sunrise) return null;
+
+    const nightFrom = night.sunset.getTime();
+    const nightTo = night.sunrise.getTime();
+
+    if (moon.fractionOfNightUp <= 0.01) return null;
+    if (moon.fractionOfNightUp >= 0.99) return { from: nightFrom, to: nightTo };
+
+    if (moon.upWhenDarkFalls) {
+        return { from: nightFrom, to: moon.set ? moon.set.getTime() : nightTo };
+    }
+
+    return { from: moon.rise ? moon.rise.getTime() : nightFrom, to: nightTo };
+}
+
+function timelineRect(x, y, width, height, className) {
+    const rect = document.createElementNS(SVG_NS, 'rect');
+    rect.setAttribute('class', className);
+    rect.setAttribute('x', String(x));
+    rect.setAttribute('y', String(y));
+    rect.setAttribute('width', String(Math.max(0, width)));
+    rect.setAttribute('height', String(height));
+    return rect;
+}
+
+function timelineLabel(x, y, text, side) {
+    const label = document.createElementNS(SVG_NS, 'text');
+    label.setAttribute('class', 'timeline-label');
+    label.setAttribute('x', String(x));
+    label.setAttribute('y', String(y));
+    label.setAttribute('text-anchor', side === 'end' ? 'end' : 'start');
+    label.textContent = text;
+    return label;
 }
 
 function renderMilkyWay(milkyWay) {
