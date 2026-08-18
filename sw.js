@@ -49,27 +49,27 @@
    closed — without them, an update can appear not to have worked at all.
    ============================================================================ */
 
-const CACHE_VERSION = 'darkward-v12';
+const CACHE_VERSION = 'darkward-v13';
 
 /* The app shell: enough to open the page and draw the interface with no
    network at all. The ?v= numbers must match the ones in index.html. */
 const APP_SHELL = [
     './',
     './index.html',
-    './css/styles.css?v=12',
-    './css/themes.css?v=12',
-    './js/map.js?v=12',
-    './js/lightpollution.js?v=12',
-    './js/skyquality.js?v=12',
-    './js/tonightsky.js?v=12',
-    './js/deepsky.js?v=12',
-    './js/events.js?v=12',
-    './js/inspect.js?v=12',
-    './js/search.js?v=12',
-    './js/favourites.js?v=12',
-    './js/darkskyplaces.js?v=12',
-    './js/recommend.js?v=12',
-    './js/theme.js?v=12',
+    './css/styles.css?v=13',
+    './css/themes.css?v=13',
+    './js/map.js?v=13',
+    './js/lightpollution.js?v=13',
+    './js/skyquality.js?v=13',
+    './js/tonightsky.js?v=13',
+    './js/deepsky.js?v=13',
+    './js/events.js?v=13',
+    './js/inspect.js?v=13',
+    './js/search.js?v=13',
+    './js/favourites.js?v=13',
+    './js/darkskyplaces.js?v=13',
+    './js/recommend.js?v=13',
+    './js/theme.js?v=13',
     './assets/darkward-mark-small.svg'
 ];
 

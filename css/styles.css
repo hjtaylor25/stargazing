@@ -2046,3 +2046,179 @@ html[data-theme="astronomer"] .inspect-marker {
 .text-small {
     font-size: 0.875rem;
 }
+
+/* ============================================================================
+   PHONES
+
+   Everything from here to the end of the file sits inside one media query and
+   applies at 767px and narrower — nothing else. That number pairs exactly with
+   the `min-width: 768px` block further up, so there is no width that gets
+   both and no width that gets neither.
+
+   This is why the desktop layout is safe. A browser 768px or wider never even
+   evaluates these rules, so no amount of editing below this line can change
+   what a computer sees. Device sniffing was deliberately not used: it gets
+   tablets and desktop-mode browsers wrong, and it could not make that promise.
+
+   THE PROBLEM THIS SOLVES
+   -----------------------
+   On a 390 x 780 phone the header, the three control panels and the gaps
+   between them ended 344px down the screen, and the inspect panel — the
+   tallest thing in the app — started there. The map had essentially nothing
+   left. Two changes fix it:
+
+     1. The controls shrink. The light pollution panel drops from three rows to
+        one, which alone gives back 70px.
+     2. The inspect panel stops being a panel and becomes a bottom sheet, so
+        the map keeps the whole middle of the screen instead of being squeezed
+        into whatever was left over.
+
+   Placed at the very end of the file on purpose: these rules have the same
+   specificity as the ones they override, so being last is what makes them win.
+   ============================================================================ */
+
+@media (max-width: 767px) {
+
+    /* ---- The control column ---------------------------------------------- */
+
+    /* Edge to edge, with just enough margin to look deliberate. */
+    .map-controls {
+        top: calc(var(--header-height) + 0.5rem);
+        left: 0.5rem;
+        right: 0.5rem;
+        width: auto;
+        gap: 0.4rem;
+    }
+
+    /* Light pollution collapses from three rows to one: the eye, the slider,
+       the percentage. The heading goes because the eye icon already says what
+       this is, and the attribution links go because the same credit appears in
+       the inspect panel footer and in the map's own attribution button — it is
+       duplicated here, not lost. */
+    .light-pollution-panel {
+        display: flex;
+        align-items: center;
+    }
+
+    .light-pollution-panel .panel-header {
+        border-bottom: none;
+        padding: 0.2rem 0.1rem 0.2rem 0.45rem;
+    }
+
+    .light-pollution-panel .panel-header h3,
+    .light-pollution-panel .panel-note,
+    .opacity-control label {
+        display: none;
+    }
+
+    .light-pollution-panel .panel-content {
+        flex: 1;
+        min-width: 0;
+        padding: 0.2rem 0.55rem 0.2rem 0.2rem;
+    }
+
+    /* The recommendations bar, tightened. */
+    .recommend-bar {
+        padding: 0.35rem 0.45rem;
+    }
+
+    .recommend-origin {
+        padding: 0 0.5rem 0.3rem;
+        font-size: 0.62rem;
+    }
+
+    /* A long list must not take the screen with it. */
+    .search-results {
+        max-height: 40vh;
+    }
+
+    .search-results.results-inline {
+        max-height: 32vh;
+    }
+
+    /* ---- The inspect panel becomes a bottom sheet ------------------------- */
+
+    /* Anchored to the bottom edge rather than measured below the controls, so
+       the map keeps the middle of the screen. js/inspect.js still writes
+       --inspect-panel-top and still watches the column height; both are simply
+       ignored here, which is why none of this needed a line of JavaScript. */
+    .inspect-panel {
+        top: auto;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        width: 100%;
+        max-height: 56vh;
+        border-radius: 16px 16px 0 0;
+        border-left: none;
+        border-right: none;
+        border-bottom: none;
+        animation: sheetUp 0.28s ease-out;
+    }
+
+    /* Rises from the bottom edge rather than nudging upward, because that is
+       where it now lives. */
+    @keyframes sheetUp {
+        from { transform: translateY(100%); }
+        to   { transform: translateY(0); }
+    }
+
+    /* The little grab handle every bottom sheet has. It does not drag — it is
+       there because it is the signal people read as "this is a sheet, and the
+       map continues above it". */
+    .inspect-header {
+        position: relative;
+        padding-top: 1rem;
+    }
+
+    .inspect-header::before {
+        content: '';
+        position: absolute;
+        top: 0.4rem;
+        left: 50%;
+        transform: translateX(-50%);
+        width: 36px;
+        height: 4px;
+        border-radius: 2px;
+        background-color: var(--color-panel-border);
+    }
+
+    /* ---- Touch targets ---------------------------------------------------- */
+
+    /* A finger is about 9mm across. These are the things people actually press,
+       and at desktop sizes several of them are under 30px. */
+    .icon-button {
+        width: 38px;
+        height: 38px;
+    }
+
+    .icon-button-small {
+        width: 32px;
+        height: 32px;
+    }
+
+    .inspect-tab {
+        padding: 0.7rem 0.25rem;
+        font-size: 0.66rem;
+    }
+
+    .radius-btn {
+        padding: 0.35rem 0.5rem;
+    }
+
+    .recommend-go {
+        padding: 0.4rem 0.7rem;
+    }
+
+    .search-result,
+    .favourite-go,
+    .recommend-result {
+        padding-top: 0.6rem;
+        padding-bottom: 0.6rem;
+    }
+
+    .panel-close {
+        font-size: 1.7rem;
+        padding: 0 0.35rem;
+    }
+}
