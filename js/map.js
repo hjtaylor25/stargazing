@@ -85,18 +85,14 @@ function initializeMap() {
         // Add basic UI controls
         // Navigation: zoom buttons and compass
         map.addControl(new maplibregl.NavigationControl(), 'top-right');
-        
-        // Geolocation: "Go to my location" button
-        map.addControl(
-            new maplibregl.GeolocateControl({
-                positionOptions: {
-                    enableHighAccuracy: false
-                },
-                trackUserLocation: false,
-                showAccuracyCircle: true
-            }),
-            'top-right'
-        );
+
+        // There is deliberately no MapLibre GeolocateControl here.
+        //
+        // js/search.js provides our own "use my location" button, sitting with
+        // the search box where you would look for it. Keeping MapLibre's as
+        // well would put two buttons that do the same thing on screen, and its
+        // failure messages are generic browser text we cannot reword — whereas
+        // ours explains what to do when permission is denied.
 
         // Listen for map load completion
         map.on('load', function() {

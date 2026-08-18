@@ -98,8 +98,9 @@ function initializeInspect() {
     });
 
     // Work out the panel's position now, so the very first open is already
-    // correct rather than settling into place.
+    // correct rather than settling into place, then keep watching for changes.
     positionInspectPanel();
+    watchControlsHeight();
 
     console.log('✓ Tap-to-inspect initialized');
 }
@@ -165,6 +166,24 @@ function localTimeOffset(weatherData, lng) {
     }
 
     return { seconds: Math.round(lng / 15) * 3600, estimated: true };
+}
+
+/**
+ * Inspect a place the user picked on purpose — a search result, or the
+ * "use my location" button — rather than by tapping the map.
+ *
+ * The map click handler waits out a debounce first, because clicks can arrive
+ * in bursts while someone is finding their spot. A search result is a single
+ * deliberate choice, so there is nothing to wait for and it runs immediately.
+ * Any click-inspection still counting down is cancelled, so a stray earlier tap
+ * cannot land on top of the place that was just chosen.
+ *
+ * Used by js/search.js.
+ */
+function inspectChosenLocation(lat, lng) {
+    clearTimeout(pendingInspectTimer);
+    placeMarker(lat, lng);
+    inspectLocation(lat, lng);
 }
 
 /* ============================================================================
@@ -729,13 +748,16 @@ function setInspectTitle(text) {
 }
 
 /* ----------------------------------------------------------------------------
-   Keep the panel clear of the light pollution controls
+   Keep the panel clear of the controls above it
 
-   The panel sits in the same left-hand column as the light pollution controls,
-   directly underneath them. Rather than hard-coding a top offset — which goes
-   wrong the moment that panel changes height, for instance when its text wraps
-   on a narrow screen — we measure where it actually ends and write the answer
-   into a CSS custom property.
+   The panel sits at the bottom of the same left-hand column as the search box
+   and the light pollution controls. Rather than hard-coding a top offset —
+   which goes wrong the moment anything up there changes height, for instance
+   when its text wraps on a narrow screen — we measure where the whole column
+   ends and write the answer into a CSS custom property.
+
+   Measuring the column rather than one panel inside it is what let the search
+   box be added above without touching a single number down here.
 
    styles.css then uses --inspect-panel-top for both the panel's `top` and its
    `max-height`, so the two always agree and the panel can never grow up over
@@ -755,12 +777,12 @@ const PANEL_GAP = 12;
 const MIN_PANEL_HEIGHT = 180;
 
 function positionInspectPanel() {
-    const controlsPanel = document.querySelector('.light-pollution-panel');
+    const controlsColumn = document.querySelector('.map-controls');
 
     // getBoundingClientRect is relative to the viewport, so .bottom is exactly
     // "how far down the screen do those controls end".
-    const controlsBottom = controlsPanel
-        ? controlsPanel.getBoundingClientRect().bottom
+    const controlsBottom = controlsColumn
+        ? controlsColumn.getBoundingClientRect().bottom
         : 96;
 
     // Never push the panel so far down that nothing is left of it.
@@ -770,9 +792,27 @@ function positionInspectPanel() {
     document.documentElement.style.setProperty('--inspect-panel-top', top + 'px');
 }
 
-// The controls panel can change height when the window is resized (its text
-// wraps differently), so re-measure rather than assuming the first answer holds.
+// Re-measure when the window is resized, since the controls above wrap
+// differently at different widths.
 window.addEventListener('resize', positionInspectPanel);
+
+// The controls column also changes height on its own, without the window
+// moving at all — the search status line appears while a search runs, then
+// disappears again. A resize listener never sees that.
+//
+// ResizeObserver watches the element itself and fires whenever its size
+// changes, whatever the cause, so the panel below can never end up overlapping
+// it. Guarded with a typeof check because it is the one piece of this file that
+// a genuinely old browser might not have; without it the layout is simply
+// static rather than broken.
+function watchControlsHeight() {
+    if (typeof ResizeObserver === 'undefined') return;
+
+    const controlsColumn = document.querySelector('.map-controls');
+    if (!controlsColumn) return;
+
+    new ResizeObserver(positionInspectPanel).observe(controlsColumn);
+}
 
 /* ============================================================================
    Stellarium Web

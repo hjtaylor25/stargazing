@@ -356,9 +356,8 @@ html[data-theme="astronomer"] .header-icon {
         top: 80px;
     }
 
-    .control-panel {
+    .map-controls {
         top: 90px;
-        max-width: 300px;
     }
 
     /* The inspect panel is deliberately NOT repositioned per breakpoint.
@@ -417,17 +416,36 @@ button:focus-visible {
    Positioned absolutely on the map, typically top-left or top-right.
    ============================================================================ */
 
-.control-panel {
+/* The left-hand column that holds every floating control: search on top, the
+   light pollution overlay under it.
+
+   Putting the position here, once, rather than on each panel is what lets the
+   inspect panel below simply measure this one element to find out where it can
+   start. Add another control to the column and nothing else needs touching.
+
+   The z-index sits above the inspect panel (60) so the search results can drop
+   down over it, and below the header (100). */
+.map-controls {
     position: fixed;
     top: 80px;
     left: 1rem;
+    /* The same width as the inspect panel below, so the column lines up. */
+    width: min(380px, calc(100vw - 2rem));
+    z-index: 70;
+    display: flex;
+    flex-direction: column;
+    gap: 0.6rem;
+}
+
+.control-panel {
+    /* Position comes from .map-controls above. `relative` is still needed so
+       the search results can be positioned against this panel. */
+    position: relative;
     background-color: var(--color-panel-bg);
     border: 1px solid var(--color-panel-border);
     border-radius: 6px;
     padding: 0;
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
-    max-width: 320px;
-    z-index: 50;
     font-size: 0.9rem;
 }
 
@@ -953,6 +971,190 @@ html[data-theme="astronomer"] .inspect-marker {
 .forecast-caption {
     font-size: 0.65rem;
     color: var(--color-text-secondary);
+}
+
+/* ----------------------------------------------------------------------------
+   SEARCH AND "USE MY LOCATION"
+
+   The search bar is one row: a text field with two icon buttons beside it.
+   Results drop down over whatever is below rather than pushing it out of the
+   way, so the column does not jump about while you are looking through them.
+   -------------------------------------------------------------------------- */
+
+.search-form {
+    display: flex;
+    align-items: center;
+    gap: 0.2rem;
+    padding: 0.35rem 0.45rem;
+    border-radius: 6px;
+}
+
+/* The focus ring goes around the whole bar rather than the bare input, so the
+   field and its buttons read as one control when tabbing through. */
+.search-form:focus-within {
+    outline: 2px solid var(--color-accent);
+    outline-offset: -2px;
+}
+
+.search-input {
+    flex: 1;
+    min-width: 0;
+    background: transparent;
+    border: none;
+    color: var(--color-text);
+    font-family: inherit;
+    font-size: 0.88rem;
+    padding: 0.3rem 0.25rem;
+}
+
+.search-input::placeholder {
+    color: var(--color-text-secondary);
+}
+
+/* The ring is on .search-form instead — see above. */
+.search-input:focus {
+    outline: none;
+}
+
+/* Safari draws its own clear button in a fixed colour we cannot theme, which
+   would show up as a grey blob in Astronomer mode. */
+.search-input::-webkit-search-cancel-button {
+    display: none;
+}
+
+/* Small square buttons holding a single currentColor icon. Shared by the
+   search and "use my location" buttons so they stay identical. */
+.icon-button {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 30px;
+    height: 30px;
+    flex-shrink: 0;
+    background: none;
+    border: none;
+    border-radius: 5px;
+    color: var(--color-text);
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+}
+
+.icon-button:hover {
+    background-color: var(--color-button-hover-bg);
+}
+
+.icon-button:disabled {
+    opacity: 0.45;
+    cursor: default;
+}
+
+.icon-button .icon {
+    width: 17px;
+    height: 17px;
+}
+
+/* Spins while a search or a location lookup is in flight. */
+.icon-button.is-busy .icon {
+    animation: spin 0.9s linear infinite;
+}
+
+.search-status {
+    padding: 0 0.7rem 0.45rem;
+    font-size: 0.75rem;
+    color: var(--color-text-secondary);
+}
+
+/* No empty gap under the search bar when there is nothing to report. */
+.search-status:empty {
+    display: none;
+}
+
+.search-results {
+    list-style: none;
+    margin: 0.3rem 0 0;
+    padding: 0;
+    /* Hangs below the search panel, floating over the light pollution controls
+       rather than shoving them down the page. */
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    background-color: var(--color-panel-bg);
+    border: 1px solid var(--color-panel-border);
+    border-radius: 6px;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.35);
+    max-height: 45vh;
+    overflow-y: auto;
+    scrollbar-width: thin;
+    scrollbar-color: var(--color-border) transparent;
+}
+
+.search-results:empty {
+    display: none;
+}
+
+/* Each result is a real <button>, so Tab, Enter and the space bar all work
+   without any ARIA bolted on. */
+.search-result {
+    display: block;
+    width: 100%;
+    text-align: left;
+    background: none;
+    border: none;
+    border-bottom: 1px solid var(--color-panel-border);
+    padding: 0.5rem 0.7rem;
+    color: var(--color-text);
+    font-family: inherit;
+    font-size: 0.82rem;
+    cursor: pointer;
+}
+
+.search-results li:last-child .search-result {
+    border-bottom: none;
+}
+
+.search-result:hover,
+.search-result:focus-visible {
+    background-color: var(--color-button-hover-bg);
+    outline: none;
+}
+
+.search-result-name {
+    display: block;
+    font-weight: 600;
+}
+
+.search-result-detail {
+    display: block;
+    margin-top: 0.1rem;
+    font-size: 0.72rem;
+    color: var(--color-text-secondary);
+}
+
+/* Nominatim's usage policy requires attribution to be clearly displayed. */
+.search-attribution {
+    padding: 0.4rem 0.7rem;
+    font-size: 0.68rem;
+    color: var(--color-text-secondary);
+}
+
+.search-attribution a {
+    color: var(--color-link);
+}
+
+/* Hidden from the screen but still read aloud by screen readers. Used for the
+   search field's label, which would otherwise be a placeholder only — and a
+   placeholder is not a label. */
+.visually-hidden {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    margin: -1px;
+    padding: 0;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+    border: 0;
 }
 
 /* ----------------------------------------------------------------------------

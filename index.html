@@ -42,50 +42,114 @@
     <!-- The map fills everything below the header -->
     <div id="map"></div>
 
-    <!-- Light pollution overlay controls (top-left, floating over the map) -->
-    <div class="control-panel light-pollution-panel">
-        <div class="panel-header">
-            <h3>Light Pollution</h3>
-            <!-- Two icons live in here; CSS shows whichever matches aria-pressed,
-                 so the button reads "open eye" when the overlay is on and
-                 "crossed-out eye" when it is off. They are drawn in currentColor
-                 rather than emoji, which keeps the Astronomer theme all-red. -->
-            <button id="toggle-light-pollution" class="toggle-btn"
-                    aria-pressed="true" title="Hide the overlay" aria-label="Toggle light pollution overlay">
-                <svg class="icon icon-eye-open" viewBox="0 0 24 24" fill="none"
-                     stroke="currentColor" stroke-width="2" stroke-linecap="round"
-                     stroke-linejoin="round" aria-hidden="true">
-                    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
-                    <circle cx="12" cy="12" r="3"/>
-                </svg>
-                <svg class="icon icon-eye-closed" viewBox="0 0 24 24" fill="none"
-                     stroke="currentColor" stroke-width="2" stroke-linecap="round"
-                     stroke-linejoin="round" aria-hidden="true">
-                    <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20C5 20 1 12 1 12a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/>
-                    <line x1="1" y1="1" x2="23" y2="23"/>
-                </svg>
-            </button>
+    <!-- The floating column of controls down the left-hand side: search on top,
+         then the light pollution overlay, with the inspect panel appearing
+         underneath both.
+
+         They are wrapped in one container on purpose. The inspect panel works
+         out where it can start by measuring where the controls above it end, so
+         having a single element to measure means adding or removing a control
+         up here never needs a matching change down there. -->
+    <div class="map-controls">
+
+        <!-- Search, and the "use my location" button.
+
+             This is a form so that pressing Enter submits it, which is what
+             people expect from a search box and what keyboard users rely on.
+
+             There is deliberately NO search-as-you-type here. Nominatim's usage
+             policy lists auto-complete under "Unacceptable Use" — it is one of
+             the things that will get an application banned — so we only ever
+             call the API when the user actually asks us to.
+             https://operations.osmfoundation.org/policies/nominatim/ -->
+        <div class="control-panel search-panel">
+            <form id="search-form" class="search-form" role="search">
+                <label for="search-input" class="visually-hidden">Search for a place</label>
+                <input type="search" id="search-input" class="search-input"
+                       placeholder="Search a suburb, city or state"
+                       autocomplete="off" spellcheck="false">
+
+                <button type="submit" id="search-button" class="icon-button"
+                        title="Search" aria-label="Search">
+                    <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                         stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+                         aria-hidden="true">
+                        <circle cx="11" cy="11" r="7"/>
+                        <line x1="16.5" y1="16.5" x2="21" y2="21"/>
+                    </svg>
+                </button>
+
+                <button type="button" id="locate-button" class="icon-button"
+                        title="Use my location" aria-label="Use my location">
+                    <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                         stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+                         aria-hidden="true">
+                        <circle cx="12" cy="12" r="7"/>
+                        <circle cx="12" cy="12" r="2.5" fill="currentColor" stroke="none"/>
+                        <line x1="12" y1="1.5" x2="12" y2="4"/>
+                        <line x1="12" y1="20" x2="12" y2="22.5"/>
+                        <line x1="1.5" y1="12" x2="4" y2="12"/>
+                        <line x1="20" y1="12" x2="22.5" y2="12"/>
+                    </svg>
+                </button>
+            </form>
+
+            <!-- role="status" with aria-live means a screen reader announces
+                 "Searching...", "No places found" and any error without the
+                 user having to go looking for it. -->
+            <p id="search-status" class="search-status" role="status" aria-live="polite"></p>
+
+            <!-- Results are built by js/search.js. Each one is a real <button>,
+                 so it is focusable and works with Enter and the space bar for
+                 free, rather than us reinventing that with ARIA. -->
+            <ul id="search-results" class="search-results"></ul>
         </div>
-        <div class="panel-content">
-            <div class="opacity-control">
-                <label for="light-pollution-opacity">Opacity</label>
-                <input
-                    type="range"
-                    id="light-pollution-opacity"
-                    min="0"
-                    max="100"
-                    value="50"
-                    class="opacity-slider"
-                >
-                <span id="opacity-value">50%</span>
+
+        <!-- Light pollution overlay controls -->
+        <div class="control-panel light-pollution-panel">
+            <div class="panel-header">
+                <h3>Light Pollution</h3>
+                <!-- Two icons live in here; CSS shows whichever matches aria-pressed,
+                     so the button reads "open eye" when the overlay is on and
+                     "crossed-out eye" when it is off. They are drawn in currentColor
+                     rather than emoji, which keeps the Astronomer theme all-red. -->
+                <button id="toggle-light-pollution" class="toggle-btn"
+                        aria-pressed="true" title="Hide the overlay" aria-label="Toggle light pollution overlay">
+                    <svg class="icon icon-eye-open" viewBox="0 0 24 24" fill="none"
+                         stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                         stroke-linejoin="round" aria-hidden="true">
+                        <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+                        <circle cx="12" cy="12" r="3"/>
+                    </svg>
+                    <svg class="icon icon-eye-closed" viewBox="0 0 24 24" fill="none"
+                         stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                         stroke-linejoin="round" aria-hidden="true">
+                        <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20C5 20 1 12 1 12a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/>
+                        <line x1="1" y1="1" x2="23" y2="23"/>
+                    </svg>
+                </button>
             </div>
-            <!-- Kept to one short line on purpose: this panel sits directly above
-                 the inspect panel, so every line of text here is a line taken
-                 away from the panel below it. -->
-            <p class="panel-note">
-                <a href="https://djlorenz.github.io/astronomy/lp/" target="_blank" rel="noopener">Lorenz atlas 2025</a> ·
-                <a href="https://djlorenz.github.io/astronomy/lp/colors.html" target="_blank" rel="noopener">colour key</a>
-            </p>
+            <div class="panel-content">
+                <div class="opacity-control">
+                    <label for="light-pollution-opacity">Opacity</label>
+                    <input
+                        type="range"
+                        id="light-pollution-opacity"
+                        min="0"
+                        max="100"
+                        value="50"
+                        class="opacity-slider"
+                    >
+                    <span id="opacity-value">50%</span>
+                </div>
+                <!-- Kept to one short line on purpose: this panel sits directly above
+                     the inspect panel, so every line of text here is a line taken
+                     away from the panel below it. -->
+                <p class="panel-note">
+                    <a href="https://djlorenz.github.io/astronomy/lp/" target="_blank" rel="noopener">Lorenz atlas 2025</a> ·
+                    <a href="https://djlorenz.github.io/astronomy/lp/colors.html" target="_blank" rel="noopener">colour key</a>
+                </p>
+            </div>
         </div>
     </div>
 
@@ -262,6 +326,7 @@
     <script src="js/skyquality.js"></script>
     <script src="js/tonightsky.js"></script>
     <script src="js/inspect.js"></script>
+    <script src="js/search.js"></script>
     <script src="js/theme.js"></script>
 </body>
 </html>
