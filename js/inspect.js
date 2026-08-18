@@ -128,6 +128,10 @@ async function inspectLocation(lat, lng) {
     // press the star before the lookup finishes.
     setFavouriteContext(lat, lng, null);
 
+    // The recommendations panel measures distances from here now, so its label
+    // has to say so. (js/recommend.js)
+    updateRecommendOriginLabel();
+
     // Three independent lookups, so run them together rather than one after
     // another. Promise.all rejects as soon as any one of them rejects, so each
     // fetch function handles its own errors and resolves with null instead.
@@ -741,8 +745,10 @@ function closeInspectPanel() {
     inspectPanelOpen = false;
     currentInspectLocation = null;
 
-    // Nothing is selected any more, so the star has nothing to act on.
+    // Nothing is selected any more, so the star has nothing to act on and the
+    // recommendations panel goes back to measuring from the map centre.
     clearFavouriteContext();
+    updateRecommendOriginLabel();
 
     // Cancel any inspection still in flight so it cannot reopen the panel.
     clearTimeout(pendingInspectTimer);

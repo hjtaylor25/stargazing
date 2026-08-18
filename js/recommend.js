@@ -123,6 +123,14 @@ function initializeRecommend() {
     }
 
     updateRadiusButtons();
+
+    // The label follows the map whenever the map is what it is following.
+    // waitForMapReady lives in js/map.js and waits for the style to finish.
+    waitForMapReady(function () {
+        map.on('moveend', updateRecommendOriginLabel);
+        updateRecommendOriginLabel();
+    });
+
     console.log(`✓ Recommendations initialized (${DARK_SKY_PLACES.length} curated places)`);
 }
 
@@ -159,6 +167,7 @@ async function findBestSpots() {
     recommendRunning = true;
     setRecommendBusy(true);
     clearRecommendations();
+    updateRecommendOriginLabel();
 
     try {
         setRecommendStatus('Looking for places you can get to…');
@@ -218,11 +227,38 @@ async function findBestSpots() {
 
 /**
  * Where to search from: the place you last tapped, or whatever the map is
- * centred on if you have not tapped anything.
+ * centred on if you have not tapped anything yet.
+ *
+ * The tapped point wins deliberately. Once you have chosen somewhere, panning
+ * the map to look around should not silently move your starting point out from
+ * under you. Close the inspect panel and it goes back to following the map.
+ *
+ * Which of the two is in use is written on screen by the function below,
+ * because a distance is meaningless if you cannot tell what it is measured
+ * from — and there is no way to guess from looking at the map.
  */
 function recommendationOrigin() {
     if (currentInspectLocation) return currentInspectLocation;
     return getMapCenter();
+}
+
+function updateRecommendOriginLabel() {
+    const label = document.getElementById('recommend-origin');
+    if (!label) return;
+
+    const origin = recommendationOrigin();
+
+    if (!origin) {
+        label.textContent = '';
+        return;
+    }
+
+    const source = currentInspectLocation
+        ? 'the spot you tapped'
+        : 'the middle of the map';
+
+    label.textContent =
+        `Measuring from ${source} · ${origin.lat.toFixed(3)}°, ${origin.lng.toFixed(3)}°`;
 }
 
 /* ============================================================================
@@ -578,6 +614,7 @@ function renderRecommendations(ranked) {
     if (!list) return;
 
     list.innerHTML = '';
+    list.appendChild(buildRecommendHeader(ranked.length));
 
     ranked.forEach(function (candidate, index) {
         const item = document.createElement('li');
@@ -620,6 +657,36 @@ function renderRecommendations(ranked) {
     });
 
     list.appendChild(buildRecommendAttribution());
+}
+
+/**
+ * The first row: how many spots, and a button to put the list away again.
+ *
+ * The list now takes real space in the column rather than floating over the
+ * panel below, so being able to dismiss it matters — otherwise the only way to
+ * get the room back would be to reload.
+ */
+function buildRecommendHeader(count) {
+    const row = document.createElement('li');
+    row.className = 'recommend-head';
+
+    const summary = document.createElement('span');
+    summary.textContent = `Top ${count} within ${recommendRadiusKm} km`;
+
+    const close = document.createElement('button');
+    close.type = 'button';
+    close.className = 'icon-button icon-button-small';
+    close.title = 'Hide these suggestions';
+    close.setAttribute('aria-label', 'Hide these suggestions');
+    // makeIcon() is the shared SVG helper from js/favourites.js.
+    close.appendChild(makeIcon('M6 6l12 12M18 6L6 18'));
+    close.addEventListener('click', function () {
+        clearRecommendations();
+        setRecommendStatus('');
+    });
+
+    row.append(summary, close);
+    return row;
 }
 
 function buildRecommendAttribution() {

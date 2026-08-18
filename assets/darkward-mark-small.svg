@@ -1,0 +1,34 @@
+<!--
+  Darkward — small mark (use at roughly 48px and below, and as the favicon)
+
+  No fine detail here, on purpose. At 40px one unit of this 64-unit grid is
+  about 0.6 of a pixel, so hairlines and half-unit stars would land as grey
+  haze rather than shapes. This one keeps only what survives: the zone, the
+  earth, one bright star, the waypoint.
+
+  Colour comes from `currentColor`. Inside the page that means it themes
+  itself; as a favicon nothing sets `color`, so the fallback on the <svg>
+  element below is what the browser tab actually shows.
+-->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="40" height="40"
+     role="img" aria-label="Darkward" color="#8EC9FF">
+  <defs>
+    <linearGradient id="dwEarthSm" x1="0" y1="36" x2="0" y2="56" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="currentColor" stop-opacity="0.34"/>
+      <stop offset="1" stop-color="currentColor" stop-opacity="0.07"/>
+    </linearGradient>
+  </defs>
+
+  <path d="M58 32 L45 54.5 L19 54.5 L6 32 L19 9.5 L45 9.5 Z"
+        fill="none" stroke="currentColor" stroke-width="4.4" stroke-linejoin="round"/>
+
+  <path d="M14 46 C22 37 42 37 50 46 L45 54.5 L19 54.5 Z" fill="url(#dwEarthSm)"/>
+
+  <path d="M14 46 C22 37 42 37 50 46" fill="none" stroke="currentColor"
+        stroke-width="2.8" stroke-linecap="round" opacity="0.85"/>
+
+  <g fill="currentColor">
+    <circle cx="23" cy="31" r="2.6"/>
+    <path d="M37.5 13 Q39 19.2 45 20.5 Q39 21.8 37.5 28 Q36 21.8 30 20.5 Q36 19.2 37.5 13 Z"/>
+  </g>
+</svg>

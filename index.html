@@ -3,7 +3,22 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>DarkWard — Stargazing Planner</title>
+    <!-- "Darkward" spelt as the brand assets spell it (their aria-labels all
+         say Darkward, not DarkWard). The wordmark below splits it visually
+         into DARK + WARD with two font weights, not with a capital letter. -->
+    <title>Darkward — Stargazing Planner</title>
+
+    <!-- The small mark as the tab icon. It drops the fine detail that turns to
+         haze at 16-32px; the full mark is inlined in the header below. -->
+    <link rel="icon" type="image/svg+xml" href="assets/darkward-mark-small.svg">
+
+    <!-- Space Grotesk, for the wordmark and the theme switch. If Google Fonts
+         is unreachable the fallback stack in styles.css still looks right —
+         never let a page depend on a webfont arriving. preconnect just opens
+         the connections early so the text is not left waiting. -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;500;700&display=swap" rel="stylesheet">
 
     <!-- MapLibre GL JS: the open-source map engine that draws the basemap -->
     <link href="https://unpkg.com/maplibre-gl@4.2.0/dist/maplibre-gl.css" rel="stylesheet" />
@@ -20,34 +35,75 @@
          library actually arrived before using it. -->
     <script defer src="https://cdn.jsdelivr.net/npm/astronomy-engine@2.1.19/astronomy.browser.min.js"></script>
 
-    <!-- ABOUT THE ?v=8 ON OUR OWN FILES BELOW
+    <!-- ABOUT THE ?v=10 ON OUR OWN FILES BELOW
          =======================================
          Browsers cache CSS and JavaScript hard, and GitHub Pages tells them to
          keep it for ten minutes. That means editing a file and reloading can
          show you the OLD version, which is baffling: the code on disk is right,
          the page is wrong, and nothing looks broken.
 
-         Adding ?v=8 makes the browser treat it as a different file, so a change
+         Adding ?v=10 makes the browser treat it as a different file, so a change
          is picked up immediately.
 
          >>> WHEN YOU EDIT ANY CSS OR JS FILE, BUMP THIS NUMBER EVERYWHERE IN
-         >>> THIS FILE — 8 becomes 9, and so on. It is the one manual step that
+         >>> THIS FILE — 10 becomes 11, and so on. It is the one manual step that
          >>> comes with having no build tool.
 
          (While developing you can also keep the browser's dev tools open with
          "Disable cache" ticked, which does the same job automatically.) -->
 
     <!-- Our stylesheets. styles.css does layout; themes.css only sets colours. -->
-    <link rel="stylesheet" href="css/styles.css?v=8">
-    <link rel="stylesheet" href="css/themes.css?v=8">
+    <link rel="stylesheet" href="css/styles.css?v=10">
+    <link rel="stylesheet" href="css/themes.css?v=10">
 </head>
 <body>
     <!-- Minimal header so the map gets as much of the screen as possible -->
     <header class="header">
         <div class="header-content">
-            <h1 class="header-title"><span class="header-icon" aria-hidden="true">🔭</span> DarkWard</h1>
+
+            <!-- The mark is pasted straight into the HTML rather than loaded
+                 with <img>, because that is the only way `currentColor` can
+                 reach inside it. Every stroke and both gradient stops use
+                 currentColor, so one CSS colour repaints the whole logo — and
+                 it follows the theme for free, including in Astronomer mode.
+
+                 That replaces the telescope emoji that used to sit here. An
+                 emoji is drawn as a fixed full-colour glyph whatever `color`
+                 says, so it needed a CSS filter to stop it showing blue and
+                 white pixels in Astronomer mode. This needs no such trick. -->
+            <div class="brand">
+                <svg class="brand-mark" viewBox="0 0 64 64" role="img" aria-label="Darkward logo">
+                    <defs>
+                        <linearGradient id="dwEarth" x1="0" y1="36" x2="0" y2="56" gradientUnits="userSpaceOnUse">
+                            <stop offset="0" stop-color="currentColor" stop-opacity="0.34"/>
+                            <stop offset="1" stop-color="currentColor" stop-opacity="0.07"/>
+                        </linearGradient>
+                    </defs>
+
+                    <path d="M58 32 L45 54.5 L19 54.5 L6 32 L19 9.5 L45 9.5 Z"
+                          fill="none" stroke="currentColor" stroke-width="4" stroke-linejoin="round"/>
+                    <path d="M14 46 C22 37 42 37 50 46 L45 54.5 L19 54.5 Z" fill="url(#dwEarth)"/>
+                    <path d="M14 46 C22 37 42 37 50 46" fill="none" stroke="currentColor"
+                          stroke-width="2.6" stroke-linecap="round" opacity="0.85"/>
+
+                    <g fill="currentColor">
+                        <circle cx="18" cy="35" r="1.4"/>
+                        <circle cx="24.5" cy="30.5" r="2.3"/>
+                        <circle cx="31" cy="26" r="1.5"/>
+                        <path d="M38 14.5 Q39.3 19.7 44.5 21 Q39.3 22.3 38 27.5 Q36.7 22.3 31.5 21 Q36.7 19.7 38 14.5 Z"/>
+                    </g>
+                </svg>
+
+                <!-- Live text, not a picture of text: sharp at any size, read
+                     aloud by screen readers, and costs nothing to download. -->
+                <div class="brand-text">
+                    <h1 class="wordmark"><span class="wordmark-strong">DARK</span><span class="wordmark-light">WARD</span></h1>
+                    <p class="tagline">Up above the world so high</p>
+                </div>
+            </div>
+
             <div class="header-controls">
-                <div id="theme-selector" class="theme-selector">
+                <div id="theme-selector" class="theme-selector" role="group" aria-label="Colour theme">
                     <button class="theme-btn" data-theme="light" title="Light theme">Light</button>
                     <button class="theme-btn" data-theme="dark" title="Dark theme">Dark</button>
                     <button class="theme-btn" data-theme="astronomer" title="Astronomer theme (red light, protects night vision)">Astronomer</button>
@@ -200,10 +256,16 @@
                 <button type="button" id="recommend-button" class="recommend-go">Find spots</button>
             </div>
 
+            <!-- Says which point the distances are measured from, so it is
+                 never a guess whether that is the map centre or the spot you
+                 last tapped. Kept up to date by js/recommend.js. -->
+            <p id="recommend-origin" class="recommend-origin"></p>
+
             <p id="recommend-status" class="search-status" role="status" aria-live="polite"></p>
 
-            <!-- Filled in by js/recommend.js -->
-            <ul id="recommend-results" class="search-results"></ul>
+            <!-- results-inline keeps this list in the flow of the column rather
+                 than floating it over the inspect panel below. -->
+            <ul id="recommend-results" class="search-results results-inline"></ul>
         </div>
     </div>
 
@@ -385,16 +447,16 @@
 
     <!-- Load order matters: map.js creates the map and the shared helpers that
          the other three scripts wait on. -->
-    <script src="js/map.js?v=8"></script>
-    <script src="js/lightpollution.js?v=8"></script>
-    <script src="js/skyquality.js?v=8"></script>
-    <script src="js/tonightsky.js?v=8"></script>
-    <script src="js/inspect.js?v=8"></script>
-    <script src="js/search.js?v=8"></script>
-    <script src="js/favourites.js?v=8"></script>
+    <script src="js/map.js?v=10"></script>
+    <script src="js/lightpollution.js?v=10"></script>
+    <script src="js/skyquality.js?v=10"></script>
+    <script src="js/tonightsky.js?v=10"></script>
+    <script src="js/inspect.js?v=10"></script>
+    <script src="js/search.js?v=10"></script>
+    <script src="js/favourites.js?v=10"></script>
     <!-- The curated list is plain data and must load before the engine uses it. -->
-    <script src="js/darkskyplaces.js?v=8"></script>
-    <script src="js/recommend.js?v=8"></script>
-    <script src="js/theme.js?v=8"></script>
+    <script src="js/darkskyplaces.js?v=10"></script>
+    <script src="js/recommend.js?v=10"></script>
+    <script src="js/theme.js?v=10"></script>
 </body>
 </html>

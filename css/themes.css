@@ -1,167 +1,141 @@
 /* ============================================================================
-   ASTROMAP — Theme Definitions
-   
-   Three themes defined using CSS custom properties (variables).
-   - Light: Clean, modern, high contrast for daytime use
-   - Dark: Colorful accents on near-black (default, good for astronomy)
-   - Astronomer: Deep reds on true black, preserves dark-adapted eyes
-   
-   Themes are toggled by adding a data-theme attribute to the html element.
-   All color references in styles.css use var(--color-*) so swapping themes
-   is just a matter of changing which CSS rule applies.
+   DARKWARD — Theme Definitions
+
+   Three themes, defined entirely as CSS custom properties (variables).
+
+     Light       clean and bright, for planning in daylight
+     Dark        the default: pale blue on deep navy
+     Astronomer  deep red on true black, to protect night-adapted eyes
+
+   The palette comes from the Darkward brand. Each theme redefines the same
+   set of names, so a theme switch is one attribute change on <html> and every
+   colour on the page follows from it. Nothing in styles.css knows or cares
+   which theme is active — it only ever names a variable.
+
+   To add a fourth theme, copy one block and change the values.
+
+   HOW THE BRAND'S SIX COLOURS MAP ONTO THESE
+   ------------------------------------------
+   The brand defines six: bg, surface, text, text-dim, brand, border. The app
+   needs a few more — buttons, links, badges, errors — so those are derived
+   from the same six rather than invented, which is what keeps the interface
+   looking like one thing.
    ============================================================================ */
 
 /* ============================================================================
-   DEFAULT / DARK THEME (applied via data-theme attribute)
-   Colorful accents on near-black. Good for astronomy and evening use.
-   This is the default when data-theme is not set.
+   DARK — the default, and what you get if no theme has been chosen
    ============================================================================ */
 
 html,
 html[data-theme="dark"] {
-    /* Text drawn ON TOP of --color-accent (e.g. the Stellarium button). */
-    --color-accent-text: #06202b;
+    --color-bg: #0B1020;
+    --color-header-bg: #131C30;
+    --color-panel-bg: #131C30;
+    --color-modal-bg: rgba(11, 16, 32, 0.95);
 
-    /* Background and surface colors */
-    --color-bg: #0f172a;
-    --color-header-bg: #1e293b;
-    --color-modal-bg: rgba(15, 23, 42, 0.95);
-    
-    /* Text colors with good contrast on dark background */
-    --color-text: #f1f5f9;
-    --color-text-secondary: #cbd5e1;
-    
-    /* Borders */
-    --color-border: #334155;
-    
-    /* Buttons */
-    --color-button-bg: #334155;
-    --color-button-hover-bg: #475569;
-    
-    /* Accent: bright cyan, good for stargazing maps */
-    --color-accent: #06b6d4;
-    /* Same colour as plain numbers, for rgba() in the marker pulse. CSS
-       cannot pull the channels out of a hex value, so it has to be repeated
-       here — keep the two in step. */
-    --color-accent-rgb: 6, 182, 212;
-    
-    /* Links */
-    --color-link: #38bdf8;
-    
-    /* Error states: red for visibility */
-    --color-error-bg: #7f1d1d;
-    --color-error-text: #fca5a5;
-    
-    /* Panels */
-    --color-panel-bg: #1e293b;
-    --color-panel-border: #334155;
-    
-    /* Badges */
-    --color-badge-bg: #1e3a8a;
-    --color-badge-text: #93c5fd;
+    --color-text: #E8EEF7;
+    --color-text-secondary: #8092B0;
+
+    --color-border: #1E2A44;
+    --color-panel-border: #1E2A44;
+
+    --color-button-bg: #1A2740;
+    --color-button-hover-bg: #24334F;
+
+    /* The brand blue. This is the logo's colour and the accent everywhere. */
+    --color-accent: #8EC9FF;
+    /* The same colour as separate channels, because CSS cannot pull them out
+       of a hex value and rgba() is needed for the marker pulse. Keep in step. */
+    --color-accent-rgb: 142, 201, 255;
+    /* Text drawn ON TOP of --color-accent. The accent is light here, so this
+       has to be dark. */
+    --color-accent-text: #0B1020;
+
+    --color-link: #8EC9FF;
+
+    --color-error-bg: #3A1417;
+    --color-error-text: #FF9B94;
+
+    --color-badge-bg: #1B2C4A;
+    --color-badge-text: #8EC9FF;
 }
 
 /* ============================================================================
-   ASTRONOMER THEME
-   Deep red on true black. NO white, blue, or green to preserve dark-adapted
-   vision. This is essential for serious stargazing.
-   
-   Activated with: html[data-theme="astronomer"]
-   ============================================================================ */
-
-html[data-theme="astronomer"] {
-    /* Near-black on the red button: white text would defeat the whole theme. */
-    --color-accent-text: #1a0000;
-
-    /* Pure black background */
-    --color-bg: #000000;
-    --color-header-bg: #1a0000;
-    --color-modal-bg: rgba(0, 0, 0, 0.98);
-    
-    /* Deep red text (safe for dark adaptation) */
-    --color-text: #cc6666;
-    --color-text-secondary: #994444;
-    
-    /* Deep red borders */
-    --color-border: #330000;
-    
-    /* Deep red buttons */
-    --color-button-bg: #220000;
-    --color-button-hover-bg: #330000;
-    
-    /* Accent: deep red (no cyan, no blue) */
-    --color-accent: #cc3333;
-    --color-accent-rgb: 204, 51, 51;
-    
-    /* Links: dark red */
-    --color-link: #cc6666;
-    
-    /* Error: slightly brighter red for critical warnings */
-    --color-error-bg: #330000;
-    --color-error-text: #ff8888;
-    
-    /* Panels: pure black with red borders */
-    --color-panel-bg: #000000;
-    --color-panel-border: #330000;
-    
-    /* Badges: deep red */
-    --color-badge-bg: #220000;
-    --color-badge-text: #cc6666;
-}
-
-/* ============================================================================
-   ASTRONOMER THEME BUTTON STYLING
-   When in Astronomer mode, the theme selector box turns red.
-   ============================================================================ */
-
-html[data-theme="astronomer"] .theme-selector {
-    background-color: #220000 !important;
-    border-color: #cc3333 !important;
-    box-shadow: 0 0 8px rgba(204, 51, 51, 0.3);
-}
-
-/* ============================================================================
-   LIGHT THEME ACTIVATION
-   Activated with: html[data-theme="light"]
+   LIGHT
    ============================================================================ */
 
 html[data-theme="light"] {
-    --color-accent-text: #ffffff;
+    --color-bg: #F6F8FC;
+    --color-header-bg: #FFFFFF;
+    --color-panel-bg: #FFFFFF;
+    --color-modal-bg: rgba(255, 255, 255, 0.96);
 
-    --color-bg: #ffffff;
-    --color-header-bg: #f8f9fa;
-    --color-modal-bg: rgba(255, 255, 255, 0.95);
-    
-    --color-text: #1a1a1a;
-    --color-text-secondary: #666666;
-    
-    --color-border: #e0e0e0;
-    
-    --color-button-bg: #f0f0f0;
-    --color-button-hover-bg: #e8e8e8;
-    
-    --color-accent: #2563eb;
-    --color-accent-rgb: 37, 99, 235;
-    
-    --color-link: #2563eb;
-    
-    --color-error-bg: #fee;
-    --color-error-text: #c00;
-    
-    --color-panel-bg: #ffffff;
-    --color-panel-border: #e0e0e0;
-    
-    --color-badge-bg: #e0e7ff;
-    --color-badge-text: #1e40af;
+    --color-text: #16233D;
+    --color-text-secondary: #5A6B87;
+
+    --color-border: #DCE3EE;
+    --color-panel-border: #DCE3EE;
+
+    --color-button-bg: #EDF1F8;
+    --color-button-hover-bg: #E1E8F4;
+
+    /* In this theme the brand colour is the deep navy, so the accent is dark
+       and the text on top of it is light — the reverse of the dark theme. */
+    --color-accent: #16233D;
+    --color-accent-rgb: 22, 35, 61;
+    --color-accent-text: #FFFFFF;
+
+    /* Links get their own blue. The brand navy is identical to the body text
+       here, so links styled with it would be invisible as links. */
+    --color-link: #1F4FA8;
+
+    --color-error-bg: #FDECEC;
+    --color-error-text: #B3261E;
+
+    --color-badge-bg: #E4EAF6;
+    --color-badge-text: #16233D;
 }
 
 /* ============================================================================
-   THEME-SPECIFIC MAP STYLING
-   MapLibre GL allows us to apply paint filters to raster layers.
-   For the Astronomer theme, we'll desaturate and tint the basemap to red.
-   This is applied in js/map.js when the theme changes.
+   ASTRONOMER
+   Deep red on true black. NO white, blue or green anywhere — those wreck
+   night-adapted vision, which is the entire reason this theme exists.
+
+   Every value below has its red channel well above its green and blue, so
+   nothing on screen can read as any other hue. The map itself is a raster
+   image and cannot be themed with variables, so styles.css puts a filter over
+   the canvas to force it red too.
    ============================================================================ */
 
-/* Note: Additional map layer styling for Astronomer theme is handled
-   dynamically in js/map.js using MapLibre's setPaintProperty() method.
-   We ensure NO white, blue, or green pixels appear in the map itself. */
+html[data-theme="astronomer"] {
+    --color-bg: #000000;
+    --color-header-bg: #120503;
+    --color-panel-bg: #120503;
+    --color-modal-bg: rgba(0, 0, 0, 0.97);
+
+    --color-text: #E03A2C;
+    /* The brand's dim red is #8E2118. That is a fine colour for a border but
+       too dark to read as body text on pure black, so secondary text sits a
+       little brighter. Still unmistakably red, still far below the brightness
+       that would cost you your dark adaptation. */
+    --color-text-secondary: #A83226;
+
+    --color-border: #3A0D08;
+    --color-panel-border: #3A0D08;
+
+    --color-button-bg: #1C0704;
+    --color-button-hover-bg: #2A0A06;
+
+    --color-accent: #E03A2C;
+    --color-accent-rgb: 224, 58, 44;
+    /* Near-black on the red button: white text would defeat the whole theme. */
+    --color-accent-text: #120503;
+
+    --color-link: #E03A2C;
+
+    --color-error-bg: #2A0A06;
+    --color-error-text: #FF6A5C;
+
+    --color-badge-bg: #1C0704;
+    --color-badge-text: #E03A2C;
+}

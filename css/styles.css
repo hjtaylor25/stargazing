@@ -19,6 +19,27 @@
     box-sizing: border-box;
 }
 
+/* ----------------------------------------------------------------------------
+   Two values that several rules need to agree on.
+
+   The header's height was written out as 60px in four different places and
+   70px in four more, which is four chances to change one and forget the rest.
+   Now the map, the error banner and the control column all measure themselves
+   against this single name, and the breakpoint below changes it once.
+
+   (Colours live in themes.css. These are not colours, so they belong here.)
+   -------------------------------------------------------------------------- */
+:root {
+    --header-height: 64px;
+
+    /* Space Grotesk carries the brand: the wordmark and the theme switch. The
+       rest of the interface stays on the system font, which loads instantly
+       and reads better at small sizes. The fallbacks matter — if Google Fonts
+       is blocked or slow, the header must still look deliberate. */
+    --font-brand: 'Space Grotesk', -apple-system, BlinkMacSystemFont, "Segoe UI",
+                  Roboto, "Helvetica Neue", Arial, sans-serif;
+}
+
 html, body {
     width: 100%;
     height: 100%;
@@ -32,7 +53,7 @@ html, body {
 
 /* ============================================================================
    HEADER
-   Minimal floating bar at top. Contains title and theme toggle.
+   The brand lockup on the left, the theme switch on the right.
    ============================================================================ */
 
 .header {
@@ -40,7 +61,7 @@ html, body {
     top: 0;
     left: 0;
     right: 0;
-    height: 60px;
+    height: var(--header-height);
     background-color: var(--color-header-bg);
     border-bottom: 1px solid var(--color-border);
     z-index: 100;
@@ -51,16 +72,69 @@ html, body {
 
 .header-content {
     width: 100%;
-    padding: 0 1rem;
+    padding: 0 0.9rem;
     display: flex;
     justify-content: space-between;
     align-items: center;
+    gap: 0.75rem;
 }
 
-.header-title {
-    font-size: 1.25rem;
-    font-weight: 600;
-    letter-spacing: -0.5px;
+/* ----------------------------------------------------------------------------
+   The brand: mark, wordmark, tagline
+   -------------------------------------------------------------------------- */
+
+.brand {
+    display: flex;
+    align-items: center;
+    gap: 0.7rem;
+    min-width: 0;          /* lets the text shrink instead of pushing the switch off */
+}
+
+/* This one line themes the entire logo. Every stroke, fill and gradient stop
+   inside the SVG is currentColor, so the mark simply takes this colour —
+   brand blue in Dark, deep navy in Light, red in Astronomer. No filters, no
+   second copy of the file, nothing to keep in step. */
+.brand-mark {
+    color: var(--color-accent);
+    width: 38px;
+    height: 38px;
+    flex: none;
+}
+
+.brand-text {
+    min-width: 0;
+}
+
+/* DARK heavy, WARD light. The contrast is what gives the name its rhythm and
+   it echoes the mark's own contrast between the solid earth and the fine
+   stars. Tracking is in `em` so it stays proportional at any size. */
+.wordmark {
+    font-family: var(--font-brand);
+    font-size: 1.15rem;
+    letter-spacing: 0.2em;
+    line-height: 1;
+    white-space: nowrap;
+    color: var(--color-text);
+    margin: 0;
+}
+
+.wordmark-strong {
+    font-weight: 700;
+}
+
+.wordmark-light {
+    font-weight: 300;
+}
+
+.tagline {
+    font-family: var(--font-brand);
+    font-size: 0.56rem;
+    font-weight: 300;
+    letter-spacing: 0.3em;
+    text-transform: uppercase;
+    color: var(--color-text-secondary);
+    margin: 0.32rem 0 0;
+    white-space: nowrap;
 }
 
 .header-controls {
@@ -71,47 +145,48 @@ html, body {
 
 /* ============================================================================
    THEME SELECTOR
-   Button group to switch between themes, showing which is active.
+   Three separate buttons rather than one cycling button, so the choice you
+   want is always one press away and you can see which is active.
    ============================================================================ */
 
 .theme-selector {
     display: flex;
-    gap: 0.25rem;
-    background-color: var(--color-button-bg);
-    border: 1px solid var(--color-border);
-    border-radius: 4px;
-    padding: 0.25rem;
-    transition: all 0.3s ease;
+    gap: 0.3rem;
 }
 
 .theme-btn {
-    background-color: transparent;
-    border: none;
-    color: var(--color-text);
-    padding: 0.5rem 0.75rem;
-    cursor: pointer;
-    font-size: 0.9rem;
+    font-family: var(--font-brand);
+    font-size: 0.66rem;
     font-weight: 500;
-    transition: all 0.2s ease;
-    border-radius: 3px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    /* Uppercase is done in CSS, not in the HTML, so screen readers announce
+       "Astronomer" rather than spelling it out letter by letter. */
+    background: transparent;
+    border: 1px solid var(--color-border);
+    border-radius: 8px;
+    padding: 0.42rem 0.6rem;
+    color: var(--color-text-secondary);
+    cursor: pointer;
     white-space: nowrap;
+    transition: color 0.2s ease, border-color 0.2s ease, background-color 0.2s ease;
 }
 
-/* A translucent white wash here meant Astronomer mode lit up grey on hover.
-   The themed button colour does the same job without any white. */
 .theme-btn:hover {
-    background-color: var(--color-button-hover-bg);
+    color: var(--color-text);
+    border-color: var(--color-text-secondary);
 }
 
+/* The active theme. js/theme.js adds this class; the border and the text both
+   take the accent so it reads as chosen without needing a filled block. */
 .theme-btn.active {
-    background-color: var(--color-accent);
-    color: var(--color-bg);
-    font-weight: 600;
-    box-shadow: 0 0 6px rgba(0, 0, 0, 0.2);
+    color: var(--color-accent);
+    border-color: var(--color-accent);
+    background-color: var(--color-button-bg);
 }
 
 .theme-btn:active {
-    transform: scale(0.95);
+    transform: scale(0.96);
 }
 
 /* ============================================================================
@@ -121,12 +196,12 @@ html, body {
 
 #map {
     position: fixed;
-    top: 60px;
+    top: var(--header-height);
     left: 0;
     right: 0;
     bottom: 0;
     width: 100%;
-    height: calc(100vh - 60px);
+    height: calc(100vh - var(--header-height));
 }
 
 /* ----------------------------------------------------------------------------
@@ -257,17 +332,14 @@ html[data-theme="astronomer"] .maplibregl-ctrl-group button .maplibregl-ctrl-ico
    which already follow the theme variables — are left alone.
    -------------------------------------------------------------------------- */
 
-/* The header's telescope gets the same treatment. It is an emoji, which
-   browsers draw as a full-colour glyph regardless of what `color` says, so it
-   kept its blues and whites in Astronomer mode. That is why it is wrapped in
-   its own span rather than sitting loose in the heading — the filter has to
-   land on the glyph and not on the heading text, which is already themed. */
-.header-icon {
-    display: inline-block;
-}
+/* Only the map canvas needs this now.
 
-html[data-theme="astronomer"] .maplibregl-canvas,
-html[data-theme="astronomer"] .header-icon {
+   The header used to need it too, for a telescope emoji: browsers draw emoji
+   as fixed full-colour glyphs whatever `color` says, so it kept its blues and
+   whites in Astronomer mode and had to be filtered like the map. The Darkward
+   mark is an inline SVG drawn in currentColor, so it themes itself properly
+   and the workaround went with the emoji. */
+html[data-theme="astronomer"] .maplibregl-canvas {
     filter: grayscale(1) brightness(0.4) sepia(1) hue-rotate(-40deg) saturate(6) brightness(0.9);
 }
 
@@ -320,7 +392,7 @@ html[data-theme="astronomer"] .header-icon {
 
 .error-banner {
     position: fixed;
-    top: 70px;
+    top: calc(var(--header-height) + 0.6rem);
     left: 0;
     right: 0;
     background-color: var(--color-error-bg);
@@ -372,25 +444,24 @@ html[data-theme="astronomer"] .header-icon {
    ============================================================================ */
 
 @media (min-width: 768px) {
-    .header {
-        height: 70px;
+    /* One number. The header, the map, the error banner and the control
+       column all follow from it. */
+    :root {
+        --header-height: 74px;
     }
 
-    #map {
-        top: 70px;
-        height: calc(100vh - 70px);
+    .brand-mark {
+        width: 44px;
+        height: 44px;
     }
 
-    .header-title {
-        font-size: 1.5rem;
+    .wordmark {
+        font-size: 1.35rem;
     }
 
-    .error-banner {
-        top: 80px;
-    }
-
-    .map-controls {
-        top: 90px;
+    .theme-btn {
+        font-size: 0.72rem;
+        padding: 0.5rem 0.8rem;
     }
 
     /* The inspect panel is deliberately NOT repositioned per breakpoint.
@@ -433,6 +504,45 @@ html[data-theme="astronomer"] .header-icon {
     }
 }
 
+/* ----------------------------------------------------------------------------
+   Narrow phones
+
+   Below this width the tagline is just noise, and the three theme buttons need
+   the room it was taking. Everything shrinks a little rather than anything
+   being hidden — the brand should still be the brand on a small screen.
+   -------------------------------------------------------------------------- */
+
+@media (max-width: 520px) {
+    .tagline {
+        display: none;
+    }
+
+    .brand-mark {
+        width: 32px;
+        height: 32px;
+    }
+
+    .brand {
+        gap: 0.5rem;
+    }
+
+    .wordmark {
+        font-size: 0.95rem;
+        letter-spacing: 0.14em;
+    }
+
+    .theme-btn {
+        font-size: 0.6rem;
+        letter-spacing: 0.06em;
+        padding: 0.35rem 0.42rem;
+        border-radius: 6px;
+    }
+
+    .theme-selector {
+        gap: 0.2rem;
+    }
+}
+
 /* ============================================================================
    ACCESSIBILITY
    Focus states for keyboard navigation.
@@ -460,7 +570,7 @@ button:focus-visible {
    down over it, and below the header (100). */
 .map-controls {
     position: fixed;
-    top: 80px;
+    top: calc(var(--header-height) + 1rem);
     left: 1rem;
     /* The same width as the inspect panel below, so the column lines up. */
     width: min(380px, calc(100vw - 2rem));
@@ -1279,6 +1389,54 @@ html[data-theme="astronomer"] .inspect-marker {
 .recommend-go:disabled {
     opacity: 0.55;
     cursor: default;
+}
+
+/* Where the results appear.
+
+   The search box and the saved-places list both drop their results over the
+   map, which is right for them: you glance, you pick, they are gone.
+
+   Recommendations are different. They are the answer to a question, you read
+   them while looking at the map, and there are five of them — so as an overlay
+   they sat squarely on top of the inspect panel. Here they stay in the flow of
+   the column instead, and the panel below simply starts lower down.
+   js/inspect.js is watching this column's height with a ResizeObserver, so that
+   repositioning happens on its own.
+
+   The height is capped so a long list can never grow the column so far that
+   there is no room left for the panel underneath. Past the cap it scrolls. */
+.search-results.results-inline {
+    position: static;
+    margin-top: 0;
+    border: none;
+    border-top: 1px solid var(--color-panel-border);
+    border-radius: 0 0 6px 6px;
+    box-shadow: none;
+    max-height: min(45vh, 340px);
+}
+
+/* A count and a way out, at the top of the list. */
+.recommend-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+    padding: 0.35rem 0.4rem 0.35rem 0.7rem;
+    border-bottom: 1px solid var(--color-panel-border);
+    font-size: 0.72rem;
+    color: var(--color-text-secondary);
+}
+
+/* Where the search starts from, said out loud so it is never a guess. */
+.recommend-origin {
+    padding: 0 0.6rem 0.4rem;
+    font-size: 0.7rem;
+    color: var(--color-text-secondary);
+    font-variant-numeric: tabular-nums;
+}
+
+.recommend-origin:empty {
+    display: none;
 }
 
 /* ---- One row per suggestion ---- */
