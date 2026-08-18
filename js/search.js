@@ -3,48 +3,72 @@
 
    Two ways to get to a place without hunting for it on the map:
 
-     1. Type a suburb, city or state and pick from the results
+     1. Start typing and pick from the suggestions
      2. Press the crosshair button and let the browser share your location
 
    Either way the map flies there and the inspect panel opens for that point,
    so searching feels exactly like tapping the map yourself.
 
-   BEING A GOOD CITIZEN — PLEASE READ BEFORE CHANGING THIS
-   -------------------------------------------------------
-   Place names come from Nominatim, which the OpenStreetMap Foundation runs for
-   free. Their usage policy is short and worth reading:
+   WHY PHOTON AND NOT NOMINATIM
+   ----------------------------
+   Place names come from Photon, an OpenStreetMap geocoder run by Komoot:
+   https://photon.komoot.io
+
+   The obvious choice would have been Nominatim, which this app already uses to
+   turn coordinates back into a place name. It cannot be used here. Nominatim's
+   usage policy lists auto-complete under "Unacceptable Use" — "you must not
+   implement such a service on the client side using the API" — and doing it
+   anyway is the kind of thing that gets an application blocked.
    https://operations.osmfoundation.org/policies/nominatim/
 
-   Two rules shape the whole design of this file:
+   Photon exists precisely for this job. Its own description is "search-as-you-
+   type with OpenStreetMap", typeahead is a listed feature, it needs no API key,
+   and its terms are simply: "You can use the API for your project, but please
+   be fair - extensive usage will be throttled."
 
-     * "Auto-complete search ... you must not implement such a service on the
-       client side using the API." It is listed under Unacceptable Use, and it
-       is the kind of thing that gets an application blocked. So there is NO
-       search-as-you-type here. We only call the API when you press Enter or
-       the search button. This is the single most tempting change to make to
-       this file, and the one you must not make.
+   So the split is: Photon answers "what is this place called that I am typing",
+   Nominatim answers "what is the name of this point I tapped" (see inspect.js).
+   Both are OpenStreetMap data, and both are credited.
 
-     * "No heavy uses (an absolute maximum of 1 request per second)." We hold
-       ourselves to that in waitForRateLimit(), and we cache every answer so
-       repeating a search costs nothing.
+   BEING FAIR TO A FREE SERVICE
+   ----------------------------
+   Typing sends requests, so four things keep the traffic sensible:
 
-   Attribution is shown under the results, which the policy also requires.
+     * nothing is sent until you pause typing for a moment (the debounce)
+     * nothing is sent for one or two characters, which would match half the
+       world anyway
+     * a request still in flight is cancelled the moment you type again, so we
+       never leave work running that nobody is waiting for
+     * every answer is cached, so backspacing costs nothing
    ============================================================================ */
 
 /* ----------------------------------------------------------------------------
    Configuration
    -------------------------------------------------------------------------- */
 
-const NOMINATIM_SEARCH_API = 'https://nominatim.openstreetmap.org/search';
+const PHOTON_SEARCH_API = 'https://photon.komoot.io/api/';
 
-// Five is enough to find what you meant without burying you in options.
-const SEARCH_RESULT_LIMIT = 5;
+// Six is enough to find what you meant without burying you in options.
+const SEARCH_RESULT_LIMIT = 6;
 
-// Nominatim's hard limit is one request per second. We never go faster.
-const SEARCH_MIN_INTERVAL = 1000;
+// How long to wait after the last keystroke before asking Photon anything.
+// Long enough that typing a word is one request rather than eight; short
+// enough that the list still feels like it is keeping up.
+const SUGGEST_DEBOUNCE_DELAY = 300;
 
-// How far to zoom for a result with no sensible bounding box. Roughly
-// "town and its surroundings", which suits picking a spot to drive to.
+// Below this, a query matches so much that the results are useless.
+const SEARCH_MIN_CHARACTERS = 3;
+
+// Photon indexes all of OpenStreetMap, streets and bus stops included. A road
+// is never the answer to "where shall I drive tonight", and road names crowd
+// out real places, so this one category is dropped. Everything else is kept:
+// Photon's own ranking is good — it puts the state first for "New South Wales"
+// and Siding Spring Observatory first for "Siding Spring" — and the kind label
+// under each result makes anything unexpected obvious at a glance.
+const SEARCH_EXCLUDED_KEYS = ['highway'];
+
+// How far to zoom for a result with no bounding box. Roughly "town and its
+// surroundings", which suits picking a spot to drive to.
 const SEARCH_ZOOM = 11;
 
 // Never zoom closer than this when fitting a result's bounding box, or
@@ -64,13 +88,15 @@ const GEOLOCATION_OPTIONS = {
    State
    -------------------------------------------------------------------------- */
 
-// Remembering answers means searching "Katoomba" twice costs one request, not
-// two. Keyed by the lower-cased query.
+// Remembering answers means backspacing through a word costs nothing.
 const searchCache = new Map();
-const MAX_CACHED_SEARCHES = 20;
+const MAX_CACHED_SEARCHES = 40;
 
-// When the last request actually went out, so we can space them properly.
-let lastSearchAt = 0;
+// Counts down after each keystroke; only the last one actually fires.
+let suggestTimer = null;
+
+// The request currently in flight, so a new keystroke can cancel it.
+let inFlightSearch = null;
 
 document.addEventListener('DOMContentLoaded', initializeSearch);
 
@@ -80,6 +106,7 @@ document.addEventListener('DOMContentLoaded', initializeSearch);
 
 function initializeSearch() {
     const form = document.getElementById('search-form');
+    const input = document.getElementById('search-input');
     const locateButton = document.getElementById('locate-button');
     const panel = document.querySelector('.search-panel');
 
@@ -89,8 +116,27 @@ function initializeSearch() {
             // you were looking at disappears.
             event.preventDefault();
 
-            const input = document.getElementById('search-input');
-            runSearch(input ? input.value : '');
+            // Enter means "I have finished typing", so skip the wait.
+            clearTimeout(suggestTimer);
+            runSearch(input ? input.value : '', false);
+        });
+    }
+
+    if (input) {
+        // Suggestions as you type. The `input` event covers pasting and
+        // dictation as well as typing, which `keyup` would miss.
+        input.addEventListener('input', function () {
+            clearTimeout(suggestTimer);
+
+            const query = this.value.trim();
+
+            if (query.length < SEARCH_MIN_CHARACTERS) {
+                clearSearchResults();
+                setSearchStatus('');
+                return;
+            }
+
+            suggestTimer = setTimeout(() => runSearch(query, true), SUGGEST_DEBOUNCE_DELAY);
         });
     }
 
@@ -116,32 +162,35 @@ function initializeSearch() {
 
 /* ============================================================================
    Running a search
+
+   `quiet` is true for suggestions typed into the box and false when the search
+   button or Enter was used. The only difference is the spinner: flashing it on
+   and off with every pause in typing is more distracting than helpful.
    ============================================================================ */
 
-async function runSearch(rawQuery) {
+async function runSearch(rawQuery, quiet) {
     const query = rawQuery.trim();
+
+    // Whatever was in flight is answering an older question now.
+    cancelInFlightSearch();
 
     clearSearchResults();
 
-    if (!query) {
-        setSearchStatus('');
+    // Saved places share this dropdown slot, so putting results up means
+    // taking that list down. closeFavourites() lives in js/favourites.js.
+    closeFavourites();
+
+    if (query.length < SEARCH_MIN_CHARACTERS) {
+        setSearchStatus(query ? `Type at least ${SEARCH_MIN_CHARACTERS} characters.` : '');
         return;
     }
 
     const searchButton = document.getElementById('search-button');
-    setButtonBusy(searchButton, true);
+    if (!quiet) setButtonBusy(searchButton, true);
     setSearchStatus('Searching…');
 
     try {
         const places = await fetchPlaces(query);
-
-        // null and [] mean different things, and the user deserves to know
-        // which happened: one is "we could not ask", the other is "we asked
-        // and there is nothing there".
-        if (places === null) {
-            setSearchStatus('Search is unavailable right now. The map still works.');
-            return;
-        }
 
         if (places.length === 0) {
             setSearchStatus(`No places found for “${query}”.`);
@@ -151,71 +200,79 @@ async function runSearch(rawQuery) {
         setSearchStatus('');
         renderSearchResults(places);
 
+    } catch (error) {
+        // A newer keystroke replaced this request. That is not a failure, and
+        // the newer one is already updating the screen, so say nothing.
+        if (error.name === 'AbortError') return;
+
+        console.error('✗ Photon search error:', error);
+        setSearchStatus('Search is unavailable right now. The map still works.');
+
     } finally {
-        // Runs whether the search worked, failed or returned nothing, so the
-        // button can never be left stuck in its busy state.
-        setButtonBusy(searchButton, false);
+        if (!quiet) setButtonBusy(searchButton, false);
+    }
+}
+
+function cancelInFlightSearch() {
+    if (inFlightSearch) {
+        inFlightSearch.abort();
+        inFlightSearch = null;
     }
 }
 
 /**
- * Ask Nominatim for places matching a query.
+ * Ask Photon for places matching a query.
  *
- * Returns an array of results, or null if the request itself failed.
+ * Throws if the request fails or is cancelled; returns an array otherwise,
+ * which may legitimately be empty.
  */
 async function fetchPlaces(query) {
-    const key = query.toLowerCase();
+    // Results are biased towards wherever the map is looking, so someone in
+    // Australia typing "katoo" gets Katoomba rather than a village in Laos.
+    // The bias is part of the cache key, rounded to whole degrees so that
+    // nudging the map does not throw the cache away.
+    const bias = getMapCenter();
+    const key = bias
+        ? `${query.toLowerCase()}@${Math.round(bias.lat)},${Math.round(bias.lng)}`
+        : query.toLowerCase();
 
     if (searchCache.has(key)) {
-        console.log(`Reusing cached search for “${query}”`);
         return searchCache.get(key);
     }
 
-    await waitForRateLimit();
+    const parameters = {
+        q: query,
+        limit: String(SEARCH_RESULT_LIMIT),
+        lang: 'en'
+    };
 
-    try {
-        const params = new URLSearchParams({
-            q: query,
-            format: 'json',
-            limit: String(SEARCH_RESULT_LIMIT),
-            addressdetails: '1',
-            'accept-language': 'en'
-        });
-
-        // As with the reverse lookup in inspect.js, browsers will not let us set
-        // a custom User-Agent, so we identify ourselves by the Referer the
-        // browser sends automatically and by keeping our request rate low.
-        const response = await fetch(`${NOMINATIM_SEARCH_API}?${params}`, {
-            headers: { 'Accept-Language': 'en' }
-        });
-
-        if (!response.ok) {
-            throw new Error(`Nominatim returned ${response.status}`);
-        }
-
-        const places = await response.json();
-        rememberSearch(key, places);
-        return places;
-
-    } catch (error) {
-        console.error('✗ Nominatim search error:', error);
-        return null;
+    if (bias) {
+        parameters.lat = bias.lat.toFixed(4);
+        parameters.lon = bias.lng.toFixed(4);
     }
+
+    // AbortController lets us call off a request we no longer care about.
+    const controller = new AbortController();
+    inFlightSearch = controller;
+
+    const params = new URLSearchParams(parameters);
+    const response = await fetch(`${PHOTON_SEARCH_API}?${params}`, { signal: controller.signal });
+
+    if (!response.ok) {
+        throw new Error(`Photon returned ${response.status}`);
+    }
+
+    const data = await response.json();
+    const places = (data.features || []).filter(isUsefulPlace);
+
+    rememberSearch(key, places);
+    return places;
 }
 
-/**
- * Hold off until at least a second has passed since the last request, then
- * mark this moment as the newest one.
- */
-async function waitForRateLimit() {
-    const sinceLast = Date.now() - lastSearchAt;
-    const stillToWait = SEARCH_MIN_INTERVAL - sinceLast;
-
-    if (stillToWait > 0) {
-        await new Promise(resolve => setTimeout(resolve, stillToWait));
-    }
-
-    lastSearchAt = Date.now();
+/** Drop the categories that are never a destination — see SEARCH_EXCLUDED_KEYS. */
+function isUsefulPlace(feature) {
+    const properties = feature.properties || {};
+    return !SEARCH_EXCLUDED_KEYS.includes(properties.osm_key);
 }
 
 /** Store a result, dropping the oldest once the cache is full. */
@@ -242,6 +299,8 @@ function renderSearchResults(places) {
     list.innerHTML = '';
 
     places.forEach(function (place) {
+        const properties = place.properties || {};
+
         const item = document.createElement('li');
 
         // A real <button> gets keyboard focus, Enter and the space bar for
@@ -253,11 +312,11 @@ function renderSearchResults(places) {
 
         const name = document.createElement('span');
         name.className = 'search-result-name';
-        name.textContent = shortPlaceName(place.display_name);
+        name.textContent = placeName(properties);
 
         const detail = document.createElement('span');
         detail.className = 'search-result-detail';
-        detail.textContent = [describePlaceKind(place), restOfPlaceName(place.display_name)]
+        detail.textContent = [describePlaceKind(properties), describePlaceLocation(properties)]
             .filter(Boolean)
             .join(' · ');
 
@@ -269,18 +328,25 @@ function renderSearchResults(places) {
     list.appendChild(buildSearchAttribution());
 }
 
-/** Required by Nominatim's usage policy: credit shown wherever results are. */
+/** Photon serves OpenStreetMap data; both deserve the credit. */
 function buildSearchAttribution() {
     const credit = document.createElement('li');
     credit.className = 'search-attribution';
 
-    const link = document.createElement('a');
-    link.href = 'https://nominatim.openstreetmap.org/';
-    link.target = '_blank';
-    link.rel = 'noopener';
-    link.textContent = 'Nominatim / OpenStreetMap';
+    const photon = document.createElement('a');
+    photon.href = 'https://photon.komoot.io/';
+    photon.target = '_blank';
+    photon.rel = 'noopener';
+    photon.textContent = 'Photon';
 
-    credit.append(document.createTextNode('Search by '), link);
+    const osm = document.createElement('a');
+    osm.href = 'https://www.openstreetmap.org/copyright';
+    osm.target = '_blank';
+    osm.rel = 'noopener';
+    osm.textContent = 'OpenStreetMap';
+
+    credit.append(document.createTextNode('Search by '), photon,
+                  document.createTextNode(' · data © '), osm);
     return credit;
 }
 
@@ -305,29 +371,37 @@ function setButtonBusy(button, busy) {
 }
 
 /* ----------------------------------------------------------------------------
-   Tidying up Nominatim's display_name
+   Turning Photon's properties into something readable
 
-   It arrives as one long line, most specific first:
-       "Katoomba, New South Wales, 2780, Australia"
-
-   The first part makes a good heading and the rest makes a good subtitle.
+   Photon returns structured fields rather than one long line:
+       { name: "Katoomba", state: "New South Wales", country: "Australia",
+         osm_key: "place", osm_value: "town" }
    -------------------------------------------------------------------------- */
 
-function shortPlaceName(displayName) {
-    return displayName.split(',')[0].trim();
-}
-
-function restOfPlaceName(displayName) {
-    return displayName
-        .split(',')
-        .slice(1)
-        .map(part => part.trim())
-        .join(', ');
+function placeName(properties) {
+    return properties.name || properties.city || properties.state || 'Unnamed place';
 }
 
 /**
- * What kind of place is this? Nominatim's own words are database-ish
- * ("administrative", "protected_area"), so the common ones get plain English
+ * The line under the name: where in the world this is. Anything that simply
+ * repeats the name is skipped, so "Katoomba" does not read "Katoomba, Katoomba".
+ */
+function describePlaceLocation(properties) {
+    const parts = [];
+
+    ['city', 'county', 'state', 'country'].forEach(function (field) {
+        const value = properties[field];
+        if (value && value !== properties.name && !parts.includes(value)) {
+            parts.push(value);
+        }
+    });
+
+    return parts.join(', ');
+}
+
+/**
+ * What kind of place is this? OpenStreetMap's own words are database-ish
+ * ("nature_reserve", "administrative"), so the common ones get plain English
  * and anything unexpected is tidied up rather than hidden.
  */
 const PLACE_KIND_LABELS = {
@@ -337,6 +411,7 @@ const PLACE_KIND_LABELS = {
     hamlet: 'Hamlet',
     suburb: 'Suburb',
     neighbourhood: 'Neighbourhood',
+    locality: 'Locality',
     county: 'County',
     state: 'State',
     region: 'Region',
@@ -345,13 +420,17 @@ const PLACE_KIND_LABELS = {
     municipality: 'Municipality',
     administrative: 'Administrative area',
     national_park: 'National park',
-    protected_area: 'Protected area',
     nature_reserve: 'Nature reserve',
-    peak: 'Peak'
+    protected_area: 'Protected area',
+    park: 'Park',
+    viewpoint: 'Viewpoint',
+    camp_site: 'Campsite',
+    peak: 'Peak',
+    station: 'Station'
 };
 
-function describePlaceKind(place) {
-    const kind = place.addresstype || place.type || '';
+function describePlaceKind(properties) {
+    const kind = properties.osm_value || properties.osm_key || '';
 
     if (PLACE_KIND_LABELS[kind]) {
         return PLACE_KIND_LABELS[kind];
@@ -359,7 +438,7 @@ function describePlaceKind(place) {
 
     if (!kind) return 'Place';
 
-    // "railway_station" -> "Railway station"
+    // "nature_reserve" -> "Nature reserve"
     const spaced = kind.replace(/_/g, ' ');
     return spaced.charAt(0).toUpperCase() + spaced.slice(1);
 }
@@ -369,8 +448,12 @@ function describePlaceKind(place) {
    ============================================================================ */
 
 function chooseSearchResult(place) {
-    const lat = parseFloat(place.lat);
-    const lng = parseFloat(place.lon);
+    const properties = place.properties || {};
+    // GeoJSON puts coordinates in [longitude, latitude] order — the opposite
+    // way round from how they are usually spoken.
+    const coordinates = (place.geometry && place.geometry.coordinates) || [];
+    const lng = Number(coordinates[0]);
+    const lat = Number(coordinates[1]);
 
     if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
         setSearchStatus('That result has no usable coordinates.');
@@ -382,30 +465,31 @@ function chooseSearchResult(place) {
 
     // Leave the chosen name in the box so it is obvious what you are looking at.
     const input = document.getElementById('search-input');
-    if (input) input.value = shortPlaceName(place.display_name);
+    if (input) input.value = placeName(properties);
 
-    zoomToPlace(place, lat, lng);
+    zoomToPlace(properties, lat, lng);
     inspectChosenLocation(lat, lng);
 }
 
 /**
  * Frame the result properly.
  *
- * Nominatim returns a bounding box, which is far better than a fixed zoom: a
- * whole state fills the screen, a village does not end up at street level.
- * Falls back to a plain fly-to if the box is missing or malformed.
+ * Photon gives an `extent` for anything with an area, which is far better than
+ * a fixed zoom: a whole state fills the screen, a village does not end up at
+ * street level. Falls back to a plain fly-to when there is no extent, which is
+ * the case for single points like a viewpoint.
  */
-function zoomToPlace(place, lat, lng) {
-    const box = place.boundingbox;
+function zoomToPlace(properties, lat, lng) {
+    const extent = properties.extent;
 
-    if (map && Array.isArray(box) && box.length === 4) {
-        // Nominatim's order is [minLat, maxLat, minLon, maxLon], as strings.
-        const south = Number(box[0]);
-        const north = Number(box[1]);
-        const west = Number(box[2]);
-        const east = Number(box[3]);
+    if (map && Array.isArray(extent) && extent.length === 4) {
+        // Photon's order is [west, north, east, south].
+        const west = Number(extent[0]);
+        const north = Number(extent[1]);
+        const east = Number(extent[2]);
+        const south = Number(extent[3]);
 
-        if ([south, north, west, east].every(Number.isFinite)) {
+        if ([west, north, east, south].every(Number.isFinite)) {
             map.fitBounds([[west, south], [east, north]], {
                 padding: 40,
                 maxZoom: SEARCH_MAX_ZOOM,

@@ -54,14 +54,15 @@
 
         <!-- Search, and the "use my location" button.
 
-             This is a form so that pressing Enter submits it, which is what
-             people expect from a search box and what keyboard users rely on.
+             Suggestions appear as you type. That is why the search runs on
+             Photon rather than Nominatim: Nominatim's usage policy lists
+             auto-complete under "Unacceptable Use", while Photon is built for
+             exactly this and describes itself as "search-as-you-type with
+             OpenStreetMap". js/search.js explains the choice in full.
 
-             There is deliberately NO search-as-you-type here. Nominatim's usage
-             policy lists auto-complete under "Unacceptable Use" — it is one of
-             the things that will get an application banned — so we only ever
-             call the API when the user actually asks us to.
-             https://operations.osmfoundation.org/policies/nominatim/ -->
+             It is still a form, so pressing Enter searches straight away
+             instead of waiting for the typing pause — which is what people
+             expect from a search box, and what keyboard users rely on. -->
         <div class="control-panel search-panel">
             <form id="search-form" class="search-form" role="search">
                 <label for="search-input" class="visually-hidden">Search for a place</label>
@@ -76,6 +77,14 @@
                          aria-hidden="true">
                         <circle cx="11" cy="11" r="7"/>
                         <line x1="16.5" y1="16.5" x2="21" y2="21"/>
+                    </svg>
+                </button>
+
+                <button type="button" id="favourites-button" class="icon-button"
+                        title="Saved places" aria-label="Saved places" aria-expanded="false">
+                    <svg class="icon icon-star" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                         stroke-width="2" stroke-linejoin="round" aria-hidden="true">
+                        <polygon points="12 2.6 15.09 8.86 22 9.87 17 14.74 18.18 21.62 12 18.37 5.82 21.62 7 14.74 2 9.87 8.91 8.86"/>
                     </svg>
                 </button>
 
@@ -103,6 +112,11 @@
                  so it is focusable and works with Enter and the space bar for
                  free, rather than us reinventing that with ARIA. -->
             <ul id="search-results" class="search-results"></ul>
+
+            <!-- Saved places drop into the same spot as the search results, so
+                 only one of the two is ever filled in at a time. Both are
+                 hidden by CSS while empty. Built by js/favourites.js. -->
+            <ul id="favourites-list" class="search-results favourites-list"></ul>
         </div>
 
         <!-- Light pollution overlay controls -->
@@ -181,6 +195,16 @@
                 <h2 id="inspect-title">Select a location</h2>
                 <p id="place-coords" class="inspect-subtitle">—</p>
             </div>
+            <!-- Saves the place currently shown. Filled star means saved;
+                 the fill is driven by aria-pressed in CSS, the same way the
+                 light pollution eye icon works. -->
+            <button id="favourite-button" class="icon-button" aria-pressed="false"
+                    title="Select a place first" aria-label="Save this place" disabled>
+                <svg class="icon icon-star" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                     stroke-width="2" stroke-linejoin="round" aria-hidden="true">
+                    <polygon points="12 2.6 15.09 8.86 22 9.87 17 14.74 18.18 21.62 12 18.37 5.82 21.62 7 14.74 2 9.87 8.91 8.86"/>
+                </svg>
+            </button>
             <button id="inspect-close" class="panel-close" title="Close" aria-label="Close panel">×</button>
         </div>
 
@@ -327,6 +351,7 @@
     <script src="js/tonightsky.js"></script>
     <script src="js/inspect.js"></script>
     <script src="js/search.js"></script>
+    <script src="js/favourites.js"></script>
     <script src="js/theme.js"></script>
 </body>
 </html>

@@ -123,6 +123,11 @@ async function inspectLocation(lat, lng) {
     // Coordinates are known immediately, so show them before anything loads.
     displayPlaceInfo({ name: 'Looking up…' }, lat, lng);
 
+    // Tell the star what it would be saving. The name is not known yet, so it
+    // is passed as null — js/favourites.js falls back to the coordinates if you
+    // press the star before the lookup finishes.
+    setFavouriteContext(lat, lng, null);
+
     // Three independent lookups, so run them together rather than one after
     // another. Promise.all rejects as soon as any one of them rejects, so each
     // fetch function handles its own errors and resolves with null instead.
@@ -141,6 +146,9 @@ async function inspectLocation(lat, lng) {
     displayPlaceInfo(placeData, lat, lng);
     displaySkyQuality(skyQuality);
     displayWeather(weatherData);
+
+    // Now the real name is known, hand it to the star so saving uses it.
+    setFavouriteContext(lat, lng, placeData.name);
 
     // Tonight's sky is pure computation — no network — but it has to wait for
     // the other two: it needs the location's real UTC offset to print times in
@@ -732,6 +740,9 @@ function closeInspectPanel() {
 
     inspectPanelOpen = false;
     currentInspectLocation = null;
+
+    // Nothing is selected any more, so the star has nothing to act on.
+    clearFavouriteContext();
 
     // Cancel any inspection still in flight so it cannot reopen the panel.
     clearTimeout(pendingInspectTimer);

@@ -1112,6 +1112,19 @@ html[data-theme="astronomer"] .inspect-marker {
     top: 100%;
     left: 0;
     right: 0;
+    /* This z-index is doing real work — without it the dropdown appears BEHIND
+       the light pollution panel.
+    
+       Both panels sit inside .map-controls, which is positioned and so starts
+       its own stacking context. Inside it, the two panels are both positioned
+       with no z-index of their own, which means they paint in the order they
+       appear in the HTML — and the light pollution panel comes second. This
+       dropdown belongs to the first panel, so it painted underneath.
+    
+       Lifting it by one is enough to put it above a sibling that has no z-index
+       at all, and it stays inside .map-controls, so the whole column still sits
+       above the inspect panel as before. */
+    z-index: 1;
     background-color: var(--color-panel-bg);
     border: 1px solid var(--color-panel-border);
     border-radius: 6px;
@@ -1188,6 +1201,115 @@ html[data-theme="astronomer"] .inspect-marker {
     clip: rect(0 0 0 0);
     white-space: nowrap;
     border: 0;
+}
+
+/* ----------------------------------------------------------------------------
+   SAVED PLACES (FAVOURITES)
+
+   The list reuses .search-results for its dropdown, since it appears in the
+   same slot; only the rows inside it are styled here.
+   -------------------------------------------------------------------------- */
+
+/* A filled star means saved. The fill is driven by aria-pressed rather than by
+   a separate class, so the accessible state and the visible state cannot drift
+   apart — the same approach as the light pollution eye icon. */
+.icon-star {
+    fill: none;
+}
+
+.icon-button[aria-pressed="true"] .icon-star {
+    fill: currentColor;
+}
+
+/* Three columns: the place, then rename, then remove. */
+.favourite {
+    display: grid;
+    grid-template-columns: 1fr auto auto;
+    align-items: center;
+    gap: 0.15rem;
+    padding-right: 0.35rem;
+    border-bottom: 1px solid var(--color-panel-border);
+}
+
+.favourite:last-child {
+    border-bottom: none;
+}
+
+/* Going to the place is the main action, so it fills the row. */
+.favourite-go {
+    display: block;
+    width: 100%;
+    min-width: 0;
+    text-align: left;
+    background: none;
+    border: none;
+    padding: 0.5rem 0.7rem;
+    color: var(--color-text);
+    font-family: inherit;
+    font-size: 0.82rem;
+    cursor: pointer;
+}
+
+.favourite-go:hover,
+.favourite-go:focus-visible {
+    background-color: var(--color-button-hover-bg);
+    outline: none;
+}
+
+.favourite-name {
+    display: block;
+    font-weight: 600;
+    /* Long names shorten rather than pushing the buttons off the row. */
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.favourite-coords {
+    display: block;
+    margin-top: 0.1rem;
+    font-size: 0.72rem;
+    color: var(--color-text-secondary);
+    font-variant-numeric: tabular-nums;
+}
+
+/* A smaller version of the search bar's icon buttons, for the row actions. */
+.icon-button-small {
+    width: 26px;
+    height: 26px;
+}
+
+.icon-button-small .icon {
+    width: 15px;
+    height: 15px;
+}
+
+.favourite-empty {
+    padding: 0.6rem 0.7rem;
+    font-size: 0.78rem;
+    color: var(--color-text-secondary);
+}
+
+/* While renaming, the row holds nothing but the text box, so it drops out of
+   the three-column grid and lets the box fill the width. */
+.favourite-editing {
+    display: block;
+    padding: 0.3rem 0.4rem;
+}
+
+.favourite-rename {
+    width: 100%;
+    background-color: var(--color-button-bg);
+    border: 1px solid var(--color-accent);
+    border-radius: 4px;
+    padding: 0.4rem 0.5rem;
+    color: var(--color-text);
+    font-family: inherit;
+    font-size: 0.82rem;
+}
+
+.favourite-rename:focus {
+    outline: none;
 }
 
 /* ----------------------------------------------------------------------------
